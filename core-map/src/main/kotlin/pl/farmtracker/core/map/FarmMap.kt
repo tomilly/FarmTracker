@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -34,20 +35,27 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.PropertyFactory.circleColor
+import org.maplibre.android.style.layers.PropertyFactory.circleRadius
+import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
+import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
 import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.layers.PropertyFactory.rasterBrightnessMin
 import org.maplibre.android.style.layers.PropertyFactory.rasterSaturation
+import org.maplibre.android.style.layers.PropertyFactory.textAnchor
 import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textField
 import org.maplibre.android.style.layers.PropertyFactory.textFont
 import org.maplibre.android.style.layers.PropertyFactory.textHaloColor
 import org.maplibre.android.style.layers.PropertyFactory.textHaloWidth
+import org.maplibre.android.style.layers.PropertyFactory.textOffset
 import org.maplibre.android.style.layers.PropertyFactory.textSize
 import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.RasterLayer
@@ -57,8 +65,10 @@ import org.maplibre.android.style.sources.RasterSource
 import org.maplibre.android.style.sources.TileSet
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.LineString
 import org.maplibre.geojson.MultiPolygon
 import org.maplibre.geojson.Point
+import org.maplibre.geojson.Polygon
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
@@ -88,6 +98,15 @@ private const val FIELD_LABEL_FONT = "Noto Sans Bold"
 private const val FIELD_LABEL_SIZE = 18f
 private const val FIELD_LABEL_HALO = 1.5f
 
+private const val DRAFT_POINT_RADIUS = 7f
+private const val DRAFT_POINT_STROKE = 3f
+
+private const val ENTRY_COLOR = "#1B7F2A"
+private const val ENTRY_RADIUS = 11f
+private const val ENTRY_STROKE = 3f
+private const val ENTRY_LABEL_SIZE = 15f
+private const val ENTRY_LABEL_OFFSET = 1.1f
+
 /**
  * Mapa MapLibre w Compose. Stan (warstwy, prośby o wyśrodkowanie) przychodzi z góry;
  * MapView żyje tak długo jak ten composable i podąża za cyklem życia ekranu.
@@ -106,6 +125,7 @@ internal fun FarmMap(
     val cameraRequest = chrome.cameraRequest
     val context = LocalContext.current
     val areaPaddingPx = with(LocalDensity.current) { SHOW_AREA_PADDING.roundToPx() }
+    val entryLabel = stringResource(R.string.core_map_entry_label)
     val mapView = remember {
         MapLibre.getInstance(context)
         MapView(context).apply { onCreate(null) }
@@ -139,7 +159,7 @@ internal fun FarmMap(
             }
             mapLibreMap.setStyle(Style.Builder().fromUri(MapSources.BASE_STYLE_URL)) { loaded ->
                 loaded.usePolishLabels()
-                loaded.addFarmLayers()
+                loaded.addFarmLayers(entryLabel)
                 style = loaded
             }
             map = mapLibreMap
@@ -156,6 +176,19 @@ internal fun FarmMap(
             ?.setGeoJson(overlays.fields.toFieldsFeatureCollection())
         loadedStyle.getSourceAs<GeoJsonSource>(MapSources.FIELD_LABELS_SOURCE_ID)
             ?.setGeoJson(overlays.fields.toLabelsFeatureCollection())
+    }
+
+    LaunchedEffect(style, overlays.draft) {
+        val loadedStyle = style ?: return@LaunchedEffect
+        loadedStyle.getSourceAs<GeoJsonSource>(MapSources.DRAFT_SOURCE_ID)
+            ?.setGeoJson(overlays.draft.toDraftFeatureCollection())
+        loadedStyle.getSourceAs<GeoJsonSource>(MapSources.DRAFT_POINTS_SOURCE_ID)
+            ?.setGeoJson(overlays.draft.toPointsFeatureCollection())
+    }
+
+    LaunchedEffect(style, overlays.entryPoints) {
+        style?.getSourceAs<GeoJsonSource>(MapSources.ENTRIES_SOURCE_ID)
+            ?.setGeoJson(overlays.entryPoints.toPointsFeatureCollection())
     }
 
     LaunchedEffect(style, overlays.highlight) {
@@ -224,7 +257,7 @@ private fun MapViewLifecycle(mapView: MapView) {
 }
 
 /** Ortofotomapa pod etykietami mapy bazowej (zdjęcie + nazwy miejscowości), działki nad zdjęciem. */
-private fun Style.addFarmLayers() {
+private fun Style.addFarmLayers(entryLabel: String) {
     addSource(
         RasterSource(
             MapSources.ORTHO_SOURCE_ID,
@@ -288,9 +321,64 @@ private fun Style.addFarmLayers() {
         .withProperties(lineColor(SELECTION_LINE_COLOR), lineWidth(SELECTION_LINE_WIDTH))
     addLayerAbove(selectionFill, MapSources.FIELDS_LINE_LAYER_ID)
     addLayerAbove(selectionLine, MapSources.SELECTION_FILL_LAYER_ID)
-    // Nazwy pól na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
+    // Rysowany kształt: to samo żółte wypełnienie co zaznaczenie, do tego linia i kropki w rogach.
+    addSource(GeoJsonSource(MapSources.DRAFT_SOURCE_ID))
+    addSource(GeoJsonSource(MapSources.DRAFT_POINTS_SOURCE_ID))
+    val draftFill = FillLayer(MapSources.DRAFT_FILL_LAYER_ID, MapSources.DRAFT_SOURCE_ID)
+        .withProperties(fillColor(SELECTION_FILL_COLOR), fillOpacity(SELECTION_FILL_OPACITY))
+        .apply { setFilter(Expression.eq(Expression.geometryType(), Expression.literal("Polygon"))) }
+    val draftLine = LineLayer(MapSources.DRAFT_LINE_LAYER_ID, MapSources.DRAFT_SOURCE_ID)
+        .withProperties(lineColor(SELECTION_LINE_COLOR), lineWidth(SELECTION_LINE_WIDTH))
+    val draftPoints = CircleLayer(MapSources.DRAFT_POINTS_LAYER_ID, MapSources.DRAFT_POINTS_SOURCE_ID)
+        .withProperties(
+            circleRadius(DRAFT_POINT_RADIUS),
+            circleColor(Color.WHITE),
+            circleStrokeColor(SELECTION_LINE_COLOR),
+            circleStrokeWidth(DRAFT_POINT_STROKE),
+        )
+    addLayerAbove(draftFill, MapSources.SELECTION_LINE_LAYER_ID)
+    addLayerAbove(draftLine, MapSources.DRAFT_FILL_LAYER_ID)
+    addLayerAbove(draftPoints, MapSources.DRAFT_LINE_LAYER_ID)
+
+    // Wjazdy: zielona kropka (zielony = „jedź tu") z podpisem pod spodem.
+    addSource(GeoJsonSource(MapSources.ENTRIES_SOURCE_ID))
+    val entryCircles = CircleLayer(MapSources.ENTRIES_CIRCLE_LAYER_ID, MapSources.ENTRIES_SOURCE_ID)
+        .withProperties(
+            circleRadius(ENTRY_RADIUS),
+            circleColor(ENTRY_COLOR),
+            circleStrokeColor(Color.WHITE),
+            circleStrokeWidth(ENTRY_STROKE),
+        )
+    val entryLabels = SymbolLayer(MapSources.ENTRIES_LABEL_LAYER_ID, MapSources.ENTRIES_SOURCE_ID)
+        .withProperties(
+            textField(entryLabel),
+            textFont(arrayOf(FIELD_LABEL_FONT)),
+            textSize(ENTRY_LABEL_SIZE),
+            textColor(Color.WHITE),
+            textHaloColor(Color.BLACK),
+            textHaloWidth(FIELD_LABEL_HALO),
+            textOffset(arrayOf(0f, ENTRY_LABEL_OFFSET)),
+            textAnchor(Property.TEXT_ANCHOR_TOP),
+        )
+    addLayerAbove(entryCircles, MapSources.DRAFT_POINTS_LAYER_ID)
+
+    // Napisy (nazwy pól, „Wjazd") na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
     addLayer(fieldsLabel)
+    addLayer(entryLabels)
 }
+
+private fun List<GeoPoint>.toDraftFeatureCollection(): FeatureCollection {
+    val points = map { Point.fromLngLat(it.longitude, it.latitude) }
+    val features = when {
+        points.size >= 3 -> listOf(Feature.fromGeometry(Polygon.fromLngLats(listOf(points + points.first()))))
+        points.size == 2 -> listOf(Feature.fromGeometry(LineString.fromLngLats(points)))
+        else -> emptyList()
+    }
+    return FeatureCollection.fromFeatures(features)
+}
+
+private fun List<GeoPoint>.toPointsFeatureCollection(): FeatureCollection =
+    FeatureCollection.fromFeatures(map { Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)) })
 
 private fun List<Field>.toFieldsFeatureCollection(): FeatureCollection = FeatureCollection.fromFeatures(
     map { field ->

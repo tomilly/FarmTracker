@@ -2,13 +2,16 @@ package pl.farmtracker.core.ui.component
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -90,6 +94,8 @@ fun FarmTrackerTopBar(
 
 /**
  * Szkielet ekranu: [FarmTrackerTopBar] oraz przewijana kolumna treści z dużymi odstępami.
+ *
+ * @param bottomAction główny przycisk ekranu przyklejony do dołu – widoczny także, gdy treść się przewija
  */
 @Composable
 fun FarmTrackerScaffold(
@@ -99,11 +105,21 @@ fun FarmTrackerScaffold(
     onBack: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     actions: @Composable RowScope.() -> Unit = {},
+    bottomAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
         topBar = { FarmTrackerTopBar(title = title, icon = icon, onBack = onBack, actions = actions) },
+        bottomBar = {
+            if (bottomAction != null) {
+                Surface(shadowElevation = 8.dp) {
+                    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(FarmTrackerDimens.ScreenPadding)) {
+                        bottomAction()
+                    }
+                }
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(

@@ -4,9 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,8 +21,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.Fence
 import androidx.compose.material.icons.filled.Grass
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TouchApp
@@ -79,15 +87,21 @@ fun FieldEditorScreen(
             onBack = onBack,
             chrome = viewModel.chrome,
             onMapTap = viewModel::onMapTapped,
-            overlays = MapOverlays(fields = existingFields, highlight = uiState.parcels.flatMap { it.shape }),
+            overlays = MapOverlays(
+                fields = existingFields,
+                highlight = uiState.parcels.flatMap { it.shape },
+                draft = uiState.drawnPoints,
+            ),
             modifier = modifier,
             // Przy wyznaczaniu pola granice działek są zawsze potrzebne – przycisk tylko zabierałby miejsce mapie.
             showParcelsToggle = false,
         ) {
             ShapePanel(
                 uiState = uiState,
-                onUndo = viewModel::removeLastParcel,
+                onUndo = viewModel::undoLast,
                 onSearch = viewModel::openSearch,
+                onDraw = viewModel::startDrawing,
+                onPickParcels = viewModel::stopDrawing,
                 onNext = viewModel::goToDetails,
             )
         }
@@ -103,22 +117,64 @@ fun FieldEditorScreen(
             )
         }
         EditorStep.DETAILS -> {
-            // „Wstecz" z formularza wraca do mapy z wybranymi działkami, a nie wyrzuca z tworzenia pola.
+            // „Wstecz" z formularza wraca do mapy z wybranym kształtem, a nie wyrzuca z tworzenia pola.
             BackHandler(onBack = viewModel::backToShape)
             FieldDetailsStep(
                 uiState = uiState,
                 onBack = viewModel::backToShape,
                 onNameChanged = viewModel::onNameChanged,
                 onColorSelected = viewModel::onColorSelected,
+                onMarkEntry = viewModel::openEntry,
+                onRemoveEntry = viewModel::clearEntry,
                 onSave = viewModel::save,
                 modifier = modifier,
             )
+        }
+        EditorStep.ENTRY -> {
+            BackHandler(onBack = viewModel::closeEntry)
+            MapScaffold(
+                title = stringResource(R.string.fields_entry_title),
+                icon = Icons.Filled.Fence,
+                onBack = viewModel::closeEntry,
+                chrome = viewModel.chrome,
+                onMapTap = viewModel::onMapTapped,
+                overlays = MapOverlays(
+                    fields = existingFields,
+                    highlight = uiState.fieldShape,
+                    entryPoints = listOfNotNull(uiState.entryPoint),
+                ),
+                modifier = modifier,
+                showParcelsToggle = false,
+            ) {
+                EntryPanel(uiState = uiState, onDone = viewModel::closeEntry)
+            }
         }
     }
 }
 
 @Composable
-internal fun ShapePanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onSearch: () -> Unit, onNext: () -> Unit) {
+internal fun ShapePanel(
+    uiState: FieldEditorUiState,
+    onUndo: () -> Unit,
+    onSearch: () -> Unit,
+    onDraw: () -> Unit,
+    onPickParcels: () -> Unit,
+    onNext: () -> Unit,
+) {
+    when (uiState.shapeMode) {
+        ShapeMode.PARCELS -> ParcelsPanel(uiState, onUndo, onSearch, onDraw, onNext)
+        ShapeMode.DRAW -> DrawPanel(uiState, onUndo, onPickParcels, onNext)
+    }
+}
+
+@Composable
+private fun ParcelsPanel(
+    uiState: FieldEditorUiState,
+    onUndo: () -> Unit,
+    onSearch: () -> Unit,
+    onDraw: () -> Unit,
+    onNext: () -> Unit,
+) {
     when {
         uiState.pendingLookups > 0 -> StatusPill(
             text = stringResource(R.string.fields_searching),
@@ -140,37 +196,83 @@ internal fun ShapePanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onSearc
         )
     }
     if (uiState.parcels.isEmpty()) {
-        BigActionButton(
-            text = stringResource(R.string.fields_search_by_number),
-            icon = Icons.Filled.Search,
-            onClick = onSearch,
-            tone = Tone.Neutral,
-        )
+        // Dwie pozostałe drogi do kształtu pola: po numerze albo narysowanie, gdy pole ≠ działki.
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BigActionButton(
+                text = stringResource(R.string.fields_search_by_number),
+                icon = Icons.Filled.Search,
+                onClick = onSearch,
+                tone = Tone.Neutral,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+            BigActionButton(
+                text = stringResource(R.string.fields_draw),
+                icon = Icons.Filled.Draw,
+                onClick = onDraw,
+                tone = Tone.Neutral,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+        }
     } else {
-        SelectionSummary(uiState = uiState, onUndo = onUndo)
+        ShapeSummary(
+            title = pluralStringResource(R.plurals.fields_selected_parcels, uiState.parcels.size, uiState.parcels.size),
+            areaHectares = uiState.areaHectares,
+            onUndo = onUndo,
+        )
         // Obok „Dalej" nadal można dołożyć działkę po numerze.
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BigActionButton(
                 text = stringResource(R.string.fields_search_short),
                 icon = Icons.Filled.Search,
                 onClick = onSearch,
                 tone = Tone.Neutral,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
-            BigActionButton(
-                text = stringResource(R.string.fields_next),
-                icon = Icons.AutoMirrored.Filled.ArrowForward,
-                onClick = onNext,
-                tone = Tone.Go,
-                modifier = Modifier.weight(1f),
-            )
+            NextButton(onClick = onNext, modifier = Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
 
-/** „2 działki · ok. 12,40 ha" + „Cofnij" ostatnio dodanej. */
 @Composable
-private fun SelectionSummary(uiState: FieldEditorUiState, onUndo: () -> Unit) {
+private fun DrawPanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onPickParcels: () -> Unit, onNext: () -> Unit) {
+    val corners = uiState.drawnPoints.size
+    if (!uiState.canContinue) {
+        StatusPill(text = stringResource(R.string.fields_draw_hint), icon = Icons.Filled.TouchApp)
+    }
+    if (corners > 0) {
+        ShapeSummary(
+            title = pluralStringResource(R.plurals.fields_corners, corners, corners),
+            areaHectares = uiState.areaHectares.takeIf { uiState.canContinue },
+            onUndo = onUndo,
+        )
+    }
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        BigActionButton(
+            text = stringResource(R.string.fields_pick_parcels),
+            icon = Icons.Filled.GridOn,
+            onClick = onPickParcels,
+            tone = Tone.Neutral,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
+        NextButton(onClick = onNext, enabled = uiState.canContinue, modifier = Modifier.weight(1f).fillMaxHeight())
+    }
+}
+
+@Composable
+private fun NextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    BigActionButton(
+        text = stringResource(R.string.fields_next),
+        icon = Icons.AutoMirrored.Filled.ArrowForward,
+        onClick = onClick,
+        tone = Tone.Go,
+        enabled = enabled,
+        modifier = modifier,
+    )
+}
+
+/** „2 działki · ok. 12,40 ha" albo „4 rogi · ok. 3,10 ha" + „Cofnij" ostatniego kroku. */
+@Composable
+private fun ShapeSummary(title: String, areaHectares: Double?, onUndo: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -184,19 +286,14 @@ private fun SelectionSummary(uiState: FieldEditorUiState, onUndo: () -> Unit) {
             Icon(Icons.Filled.Grass, contentDescription = null, modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.fields_selected_parcels,
-                        uiState.parcels.size,
-                        uiState.parcels.size,
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = stringResource(R.string.fields_area, formatHectares(uiState.areaHectares)),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                if (areaHectares != null) {
+                    Text(
+                        text = stringResource(R.string.fields_area, formatHectares(areaHectares)),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
             TextButton(onClick = onUndo, modifier = Modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget)) {
                 Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
@@ -208,11 +305,28 @@ private fun SelectionSummary(uiState: FieldEditorUiState, onUndo: () -> Unit) {
 }
 
 @Composable
+private fun EntryPanel(uiState: FieldEditorUiState, onDone: () -> Unit) {
+    if (uiState.entryPoint == null) {
+        StatusPill(text = stringResource(R.string.fields_entry_hint), icon = Icons.Filled.TouchApp)
+    } else {
+        StatusPill(text = stringResource(R.string.fields_entry_set), icon = Icons.Filled.CheckCircle, tone = Tone.Go)
+    }
+    BigActionButton(
+        text = stringResource(R.string.fields_entry_done),
+        icon = Icons.Filled.Check,
+        onClick = onDone,
+        tone = Tone.Go,
+    )
+}
+
+@Composable
 internal fun FieldDetailsStep(
     uiState: FieldEditorUiState,
     onBack: () -> Unit,
     onNameChanged: (String) -> Unit,
     onColorSelected: (FieldColor) -> Unit,
+    onMarkEntry: () -> Unit,
+    onRemoveEntry: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -222,10 +336,20 @@ internal fun FieldDetailsStep(
         icon = Icons.Filled.AddLocationAlt,
         onBack = onBack,
         modifier = modifier,
+        // „Zapisz" zawsze widoczny na dole, nawet gdy lista kolorów się przewija.
+        bottomAction = {
+            BigActionButton(
+                text = stringResource(R.string.fields_save),
+                icon = Icons.Filled.Check,
+                onClick = onSave,
+                tone = Tone.Go,
+                enabled = uiState.canSave,
+            )
+        },
     ) {
         StatusPill(
-            text = pluralStringResource(R.plurals.fields_selected_parcels, uiState.parcels.size, uiState.parcels.size) +
-                " · " + stringResource(R.string.fields_area, formatHectares(uiState.areaHectares)),
+            text = shapeSummaryText(uiState) + " · " +
+                stringResource(R.string.fields_area, formatHectares(uiState.areaHectares)),
             icon = Icons.Filled.Grass,
         )
         Text(stringResource(R.string.fields_name_label), style = MaterialTheme.typography.titleMedium)
@@ -235,6 +359,11 @@ internal fun FieldDetailsStep(
             modifier = Modifier.fillMaxWidth().heightIn(min = FarmTrackerDimens.MinTouchTarget),
             textStyle = MaterialTheme.typography.titleMedium,
             placeholder = { Text(stringResource(R.string.fields_name_hint), style = MaterialTheme.typography.titleMedium) },
+            supportingText = if (uiState.name.isBlank()) {
+                { Text(stringResource(R.string.fields_name_required), style = MaterialTheme.typography.bodyMedium) }
+            } else {
+                null
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
@@ -242,16 +371,41 @@ internal fun FieldDetailsStep(
             ),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
         )
+
+        Text(stringResource(R.string.fields_entry_section), style = MaterialTheme.typography.titleMedium)
+        if (uiState.entryPoint != null) {
+            StatusPill(text = stringResource(R.string.fields_entry_set), icon = Icons.Filled.CheckCircle, tone = Tone.Go)
+        }
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BigActionButton(
+                text = stringResource(
+                    if (uiState.entryPoint == null) R.string.fields_entry_mark else R.string.fields_entry_change,
+                ),
+                icon = Icons.Filled.Fence,
+                onClick = onMarkEntry,
+                tone = Tone.Neutral,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+            if (uiState.entryPoint != null) {
+                BigActionButton(
+                    text = stringResource(R.string.fields_entry_remove),
+                    icon = Icons.Filled.Delete,
+                    onClick = onRemoveEntry,
+                    tone = Tone.Neutral,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
+            }
+        }
+
         Text(stringResource(R.string.fields_color_label), style = MaterialTheme.typography.titleMedium)
         ColorPicker(selected = uiState.color, onSelect = onColorSelected)
-        BigActionButton(
-            text = stringResource(R.string.fields_save),
-            icon = Icons.Filled.Check,
-            onClick = onSave,
-            tone = Tone.Go,
-            enabled = uiState.canSave,
-        )
     }
+}
+
+@Composable
+private fun shapeSummaryText(uiState: FieldEditorUiState): String = when (uiState.shapeMode) {
+    ShapeMode.PARCELS -> pluralStringResource(R.plurals.fields_selected_parcels, uiState.parcels.size, uiState.parcels.size)
+    ShapeMode.DRAW -> pluralStringResource(R.plurals.fields_corners, uiState.drawnPoints.size, uiState.drawnPoints.size)
 }
 
 private val PreviewParcel = Parcel(
@@ -269,11 +423,35 @@ private val PreviewParcel = Parcel(
 private fun ShapePanelPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         Surface {
-            Column(Modifier.padding(16.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ShapePanel(
                     uiState = FieldEditorUiState(parcels = listOf(PreviewParcel)),
                     onUndo = {},
                     onSearch = {},
+                    onDraw = {},
+                    onPickParcels = {},
+                    onNext = {},
+                )
+            }
+        }
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun DrawPanelPreview() {
+    FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
+        Surface {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ShapePanel(
+                    uiState = FieldEditorUiState(
+                        shapeMode = ShapeMode.DRAW,
+                        drawnPoints = listOf(GeoPoint(50.95, 17.35), GeoPoint(50.95, 17.36), GeoPoint(50.96, 17.36)),
+                    ),
+                    onUndo = {},
+                    onSearch = {},
+                    onDraw = {},
+                    onPickParcels = {},
                     onNext = {},
                 )
             }
@@ -291,10 +469,13 @@ private fun FieldDetailsPreview() {
                 parcels = listOf(PreviewParcel),
                 name = "Bystrzyca 2285",
                 color = FieldColor.ORANGE,
+                entryPoint = GeoPoint(50.95, 17.355),
             ),
             onBack = {},
             onNameChanged = {},
             onColorSelected = {},
+            onMarkEntry = {},
+            onRemoveEntry = {},
             onSave = {},
         )
     }

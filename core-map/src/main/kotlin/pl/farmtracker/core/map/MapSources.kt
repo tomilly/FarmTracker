@@ -43,6 +43,16 @@ internal object MapSources {
     const val FIELDS_LINE_LAYER_ID = "fields-line"
     const val FIELDS_LABEL_LAYER_ID = "fields-label"
 
+    const val DRAFT_SOURCE_ID = "draft"
+    const val DRAFT_POINTS_SOURCE_ID = "draft-points"
+    const val DRAFT_FILL_LAYER_ID = "draft-fill"
+    const val DRAFT_LINE_LAYER_ID = "draft-line"
+    const val DRAFT_POINTS_LAYER_ID = "draft-points"
+
+    const val ENTRIES_SOURCE_ID = "entries"
+    const val ENTRIES_CIRCLE_LAYER_ID = "entries-circle"
+    const val ENTRIES_LABEL_LAYER_ID = "entries-label"
+
     const val SELECTION_SOURCE_ID = "selected-parcel"
     const val SELECTION_FILL_LAYER_ID = "selected-parcel-fill"
     const val SELECTION_LINE_LAYER_ID = "selected-parcel-line"

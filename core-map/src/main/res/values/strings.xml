@@ -7,4 +7,5 @@
     <string name="core_map_parcels_zoom_hint">Przybliż mapę, aby zobaczyć działki</string>
     <string name="core_map_location_denied">Bez zgody na lokalizację nie pokażę, gdzie jesteś.</string>
     <string name="core_map_open_settings">Otwórz ustawienia</string>
+    <string name="core_map_entry_label">Wjazd</string>
 </resources>

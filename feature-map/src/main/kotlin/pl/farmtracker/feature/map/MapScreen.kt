@@ -59,7 +59,11 @@ fun MapScreen(
         onBack = onBack,
         chrome = viewModel.chrome,
         onMapTap = viewModel::onMapTapped,
-        overlays = MapOverlays(fields = fields, highlight = selection.selectedParcel?.shape.orEmpty()),
+        overlays = MapOverlays(
+            fields = fields,
+            highlight = selection.selectedParcel?.shape.orEmpty(),
+            entryPoints = fields.mapNotNull { it.entryPoint },
+        ),
         modifier = modifier,
     ) {
         ParcelMessage(

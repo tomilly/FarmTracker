@@ -86,7 +86,7 @@ class FieldEditorViewModelTest {
         tap(north, inNorth)
         tap(south, inSouth)
 
-        viewModel.removeLastParcel()
+        viewModel.undoLast()
 
         assertEquals(listOf(north), state.parcels)
     }
@@ -214,5 +214,93 @@ class FieldEditorViewModelTest {
         parcels.searchResult = ParcelSearch.Unavailable
         viewModel.runSearch()
         assertEquals(SearchState.Unavailable, state.search)
+    }
+
+    @Test
+    fun `drawing adds a corner on every tap, even without parcel boundaries`() {
+        viewModel.chrome.onCameraIdle(10.0)
+        viewModel.startDrawing()
+
+        viewModel.onMapTapped(GeoPoint(50.0, 17.0))
+        viewModel.onMapTapped(GeoPoint(50.0, 17.01))
+        assertFalse(state.canContinue)
+
+        viewModel.onMapTapped(GeoPoint(50.01, 17.01))
+
+        assertEquals(ShapeMode.DRAW, state.shapeMode)
+        assertEquals(3, state.drawnPoints.size)
+        assertTrue(state.canContinue)
+        assertTrue(state.areaHectares > 0)
+        assertTrue(parcels.requests.isEmpty())
+    }
+
+    @Test
+    fun `undo in drawing removes the last corner and picking parcels drops the drawing`() {
+        viewModel.startDrawing()
+        viewModel.onMapTapped(GeoPoint(50.0, 17.0))
+        viewModel.onMapTapped(GeoPoint(50.0, 17.01))
+
+        viewModel.undoLast()
+        assertEquals(listOf(GeoPoint(50.0, 17.0)), state.drawnPoints)
+
+        viewModel.stopDrawing()
+        assertEquals(ShapeMode.PARCELS, state.shapeMode)
+        assertTrue(state.drawnPoints.isEmpty())
+    }
+
+    @Test
+    fun `drawing cannot start once parcels are selected`() {
+        tap(north, inNorth)
+
+        viewModel.startDrawing()
+
+        assertEquals(ShapeMode.PARCELS, state.shapeMode)
+    }
+
+    @Test
+    fun `drawn field is saved without parcels and with an empty suggested name`() = runTest {
+        viewModel.startDrawing()
+        listOf(GeoPoint(50.0, 17.0), GeoPoint(50.0, 17.01), GeoPoint(50.01, 17.01)).forEach(viewModel::onMapTapped)
+        viewModel.goToDetails()
+        assertEquals("", state.name)
+        assertFalse(state.canSave)
+
+        viewModel.onNameChanged("Klin przy rowie")
+        viewModel.save()
+
+        val saved = fields.fields.first().single()
+        assertTrue(saved.parcelIds.isEmpty())
+        assertEquals(3, saved.shape.single().outer.size)
+    }
+
+    @Test
+    fun `entry point is marked on the map and saved with the field`() = runTest {
+        tap(north, inNorth)
+        viewModel.goToDetails()
+        val gate = GeoPoint(50.0101, 17.0001)
+
+        viewModel.openEntry()
+        assertTrue(viewModel.chrome.state.value.cameraRequest is CameraRequest.ShowArea)
+        viewModel.onMapTapped(gate)
+        viewModel.closeEntry()
+
+        assertEquals(EditorStep.DETAILS, state.step)
+        assertEquals(gate, state.entryPoint)
+        assertEquals(listOf(north), state.parcels) // dotknięcie wjazdu nie zmienia działek
+
+        viewModel.save()
+        assertEquals(gate, fields.fields.first().single().entryPoint)
+    }
+
+    @Test
+    fun `defaults are set once so a chosen colour survives going back`() {
+        tap(north, inNorth)
+        viewModel.goToDetails()
+        viewModel.onColorSelected(FieldColor.BROWN)
+
+        viewModel.backToShape()
+        viewModel.goToDetails()
+
+        assertEquals(FieldColor.BROWN, state.color)
     }
 }

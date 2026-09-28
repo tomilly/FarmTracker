@@ -15,7 +15,9 @@ import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.domain.geo.bounds
 import pl.farmtracker.core.domain.geo.containsPoint
 import pl.farmtracker.core.domain.geo.distanceMetersTo
@@ -29,7 +31,10 @@ import pl.farmtracker.data.parcel.ParcelSearch
 import java.util.UUID
 import javax.inject.Inject
 
-enum class EditorStep { SHAPE, SEARCH, DETAILS }
+enum class EditorStep { SHAPE, SEARCH, DETAILS, ENTRY }
+
+/** Jak powstaje kształt pola: z działek ewidencyjnych albo narysowany po rogach. */
+enum class ShapeMode { PARCELS, DRAW }
 
 enum class LookupProblem { NOT_FOUND, UNAVAILABLE }
 
@@ -46,24 +51,42 @@ sealed interface SearchState {
 
 data class FieldEditorUiState(
     val step: EditorStep = EditorStep.SHAPE,
+    val shapeMode: ShapeMode = ShapeMode.PARCELS,
     /** Działki wybrane do pola, w kolejności dotykania (ostatnia = do „Cofnij"). */
     val parcels: List<Parcel> = emptyList(),
+    /** Rogi rysowanego pola, w kolejności dotykania. */
+    val drawnPoints: List<GeoPoint> = emptyList(),
     val pendingLookups: Int = 0,
     val lastProblem: LookupProblem? = null,
     val searchQuery: String = "",
     val search: SearchState = SearchState.Idle,
     val name: String = "",
     val color: FieldColor = FieldColor.BLUE,
+    val entryPoint: GeoPoint? = null,
+    /** Domyślna nazwa i kolor ustawiane tylko przy pierwszym wejściu do formularza. */
+    val detailsPrefilled: Boolean = false,
     val saved: Boolean = false,
 ) {
-    val areaHectares: Double get() = parcels.sumOf { it.areaHectares }
-    val canContinue: Boolean get() = parcels.isNotEmpty()
-    val canSave: Boolean get() = parcels.isNotEmpty() && name.isNotBlank()
+    /** Kształt pola, który zostanie zapisany. Rysunek liczy się od trzech rogów. */
+    val fieldShape: List<GeoPolygon>
+        get() = when (shapeMode) {
+            ShapeMode.PARCELS -> parcels.flatMap { it.shape }
+            ShapeMode.DRAW -> if (drawnPoints.size >= MIN_CORNERS) listOf(GeoPolygon(drawnPoints)) else emptyList()
+        }
+
+    val areaHectares: Double get() = GeoArea.hectares(fieldShape)
+    val canContinue: Boolean get() = fieldShape.isNotEmpty()
+    val canUndo: Boolean get() = if (shapeMode == ShapeMode.DRAW) drawnPoints.isNotEmpty() else parcels.isNotEmpty()
+    val canSave: Boolean get() = canContinue && name.isNotBlank()
+
+    companion object {
+        const val MIN_CORNERS = 3
+    }
 }
 
 /**
- * Tworzenie pola w dwóch krokach: 1) na mapie dotyka się działek, które tworzą pole,
- * 2) nazwa i kolor. Nic nie jest zapisywane przed „Zapisz pole".
+ * Tworzenie pola: 1) na mapie wybiera się działki (dotykiem albo po numerze) albo rysuje rogi,
+ * 2) nazwa, kolor i opcjonalnie wjazd. Nic nie jest zapisywane przed „Zapisz pole".
  */
 @HiltViewModel
 class FieldEditorViewModel @Inject constructor(
@@ -83,10 +106,18 @@ class FieldEditorViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
-    /** Dotknięcie działki dodaje ją do pola; dotknięcie już wybranej – usuwa. */
     fun onMapTapped(point: GeoPoint) {
-        if (_uiState.value.step != EditorStep.SHAPE || !chrome.state.value.parcelsVisible) return
+        val state = _uiState.value
+        when {
+            state.step == EditorStep.ENTRY -> _uiState.update { it.copy(entryPoint = point) }
+            state.step != EditorStep.SHAPE -> Unit
+            state.shapeMode == ShapeMode.DRAW -> _uiState.update { it.copy(drawnPoints = it.drawnPoints + point) }
+            chrome.state.value.parcelsVisible -> toggleParcelAt(point)
+        }
+    }
 
+    /** Dotknięcie działki dodaje ją do pola; dotknięcie już wybranej – usuwa (bez pytania serwera). */
+    private fun toggleParcelAt(point: GeoPoint) {
         val tappedSelected = _uiState.value.parcels.firstOrNull { it.shape.containsPoint(point) }
         if (tappedSelected != null) {
             _uiState.update { state -> state.copy(parcels = state.parcels - tappedSelected, lastProblem = null) }
@@ -99,18 +130,27 @@ class FieldEditorViewModel @Inject constructor(
             _uiState.update { state ->
                 val pending = state.pendingLookups - 1
                 when (result) {
-                    is ParcelLookup.Found -> state.copy(
-                        pendingLookups = pending,
-                        parcels = if (state.parcels.any { it.id == result.parcel.id }) {
-                            state.parcels
-                        } else {
-                            state.parcels + result.parcel
-                        },
-                    )
+                    is ParcelLookup.Found -> state.copy(pendingLookups = pending, parcels = state.parcels.plusUnique(result.parcel))
                     ParcelLookup.NotFound -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.NOT_FOUND)
                     ParcelLookup.Unavailable -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.UNAVAILABLE)
                 }
             }
+        }
+    }
+
+    /** Rysowanie ręczne – gdy pole nie pokrywa się z działkami (np. część działki). */
+    fun startDrawing() = _uiState.update {
+        if (it.parcels.isEmpty()) it.copy(shapeMode = ShapeMode.DRAW, lastProblem = null) else it
+    }
+
+    /** Powrót do wybierania działek; narysowane rogi są porzucane. */
+    fun stopDrawing() = _uiState.update { it.copy(shapeMode = ShapeMode.PARCELS, drawnPoints = emptyList()) }
+
+    /** „Cofnij" – usuwa ostatnio dodaną działkę albo ostatni róg. */
+    fun undoLast() = _uiState.update {
+        when (it.shapeMode) {
+            ShapeMode.PARCELS -> it.copy(parcels = it.parcels.dropLast(1), lastProblem = null)
+            ShapeMode.DRAW -> it.copy(drawnPoints = it.drawnPoints.dropLast(1))
         }
     }
 
@@ -145,26 +185,30 @@ class FieldEditorViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(
                 step = EditorStep.SHAPE,
-                parcels = if (state.parcels.any { it.id == parcel.id }) state.parcels else state.parcels + parcel,
+                shapeMode = ShapeMode.PARCELS,
+                drawnPoints = emptyList(),
+                parcels = state.parcels.plusUnique(parcel),
                 lastProblem = null,
             )
         }
         chrome.showArea(parcel.shape)
     }
 
-    /** „Cofnij" – usuwa ostatnio dodaną działkę. */
-    fun removeLastParcel() = _uiState.update { it.copy(parcels = it.parcels.dropLast(1), lastProblem = null) }
-
     fun goToDetails() {
         if (!_uiState.value.canContinue) return
         viewModelScope.launch {
             val usedColors = fieldRepository.fields.first().map { it.color }.toSet()
             _uiState.update { state ->
-                state.copy(
-                    step = EditorStep.DETAILS,
-                    name = state.name.ifBlank { suggestedName(state.parcels) },
-                    color = if (state.name.isBlank()) firstFreeColor(usedColors) else state.color,
-                )
+                if (state.detailsPrefilled) {
+                    state.copy(step = EditorStep.DETAILS)
+                } else {
+                    state.copy(
+                        step = EditorStep.DETAILS,
+                        name = state.name.ifBlank { suggestedName(state) },
+                        color = firstFreeColor(usedColors),
+                        detailsPrefilled = true,
+                    )
+                }
             }
         }
     }
@@ -174,6 +218,16 @@ class FieldEditorViewModel @Inject constructor(
     fun onNameChanged(name: String) = _uiState.update { it.copy(name = name) }
 
     fun onColorSelected(color: FieldColor) = _uiState.update { it.copy(color = color) }
+
+    /** Zaznaczanie wjazdu na mapie – mapa pokazuje całe nowe pole. */
+    fun openEntry() {
+        _uiState.update { it.copy(step = EditorStep.ENTRY) }
+        chrome.showArea(_uiState.value.fieldShape)
+    }
+
+    fun closeEntry() = _uiState.update { it.copy(step = EditorStep.DETAILS) }
+
+    fun clearEntry() = _uiState.update { it.copy(entryPoint = null) }
 
     fun save() {
         val state = _uiState.value
@@ -185,8 +239,9 @@ class FieldEditorViewModel @Inject constructor(
                     id = UUID.randomUUID().toString(),
                     name = state.name.trim(),
                     color = state.color,
-                    shape = state.parcels.flatMap { it.shape },
-                    parcelIds = state.parcels.map { it.id },
+                    shape = state.fieldShape,
+                    parcelIds = if (state.shapeMode == ShapeMode.PARCELS) state.parcels.map { it.id } else emptyList(),
+                    entryPoint = state.entryPoint,
                     order = (existing.maxOfOrNull { it.order } ?: -1) + 1,
                 ),
             )
@@ -195,12 +250,17 @@ class FieldEditorViewModel @Inject constructor(
     }
 
     private companion object {
+        fun List<Parcel>.plusUnique(parcel: Parcel): List<Parcel> =
+            if (any { it.id == parcel.id }) this else this + parcel
+
         fun Parcel.distanceKmFrom(point: GeoPoint): Double? =
             shape.bounds()?.center?.distanceMetersTo(point)?.div(1000.0)
 
         /** Podpowiedź nazwy: obręb i numer pierwszej działki, np. „Bystrzyca 2285" – łatwo zmienić. */
-        fun suggestedName(parcels: List<Parcel>): String =
-            parcels.firstOrNull()?.let { "${it.precinct} ${it.number}" }.orEmpty()
+        fun suggestedName(state: FieldEditorUiState): String = when (state.shapeMode) {
+            ShapeMode.PARCELS -> state.parcels.firstOrNull()?.let { "${it.precinct} ${it.number}" }.orEmpty()
+            ShapeMode.DRAW -> ""
+        }
 
         fun firstFreeColor(used: Set<FieldColor>): FieldColor =
             FieldColor.entries.firstOrNull { it !in used } ?: FieldColor.entries.first()

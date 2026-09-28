@@ -21,8 +21,17 @@
     </plurals>
     <string name="fields_undo">Cofnij</string>
     <string name="fields_next">Dalej</string>
-    <string name="fields_search_by_number">Szukaj po numerze</string>
+    <string name="fields_search_by_number">Numer działki</string>
     <string name="fields_search_short">Szukaj</string>
+    <string name="fields_draw">Narysuj ręcznie</string>
+    <string name="fields_draw_hint">Dotykaj po kolei rogów pola (co najmniej 3)</string>
+    <string name="fields_pick_parcels">Wybierz działki</string>
+    <plurals name="fields_corners">
+        <item quantity="one">%1$d róg</item>
+        <item quantity="few">%1$d rogi</item>
+        <item quantity="many">%1$d rogów</item>
+        <item quantity="other">%1$d rogu</item>
+    </plurals>
 
     <!-- Szukanie działki po numerze -->
     <string name="fields_search_title">Szukaj działki</string>
@@ -39,5 +48,16 @@
     <string name="fields_name_label">Nazwa pola</string>
     <string name="fields_name_hint">np. Za lasem</string>
     <string name="fields_color_label">Kolor na mapie</string>
+    <string name="fields_name_required">Wpisz nazwę pola</string>
     <string name="fields_save">Zapisz pole</string>
+
+    <!-- Wjazd -->
+    <string name="fields_entry_section">Wjazd na pole (można pominąć)</string>
+    <string name="fields_entry_mark">Zaznacz wjazd na mapie</string>
+    <string name="fields_entry_change">Zmień wjazd</string>
+    <string name="fields_entry_set">Wjazd zaznaczony</string>
+    <string name="fields_entry_remove">Usuń wjazd</string>
+    <string name="fields_entry_title">Wjazd na pole</string>
+    <string name="fields_entry_hint">Dotknij miejsca, gdzie wjeżdża się na pole</string>
+    <string name="fields_entry_done">Gotowe</string>
 </resources>
