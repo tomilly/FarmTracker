@@ -45,6 +45,10 @@
     <string name="fields_color_label">Kolor na mapie</string>
     <string name="fields_name_required">Wpisz nazwę pola</string>
     <string name="fields_save">Zapisz pole</string>
+    <string name="fields_edit_title">Edytuj pole</string>
+    <string name="fields_edit">Edytuj</string>
+    <string name="fields_delete">Usuń pole</string>
+    <string name="fields_deleted">Usunięto pole „%1$s”</string>
 
     <!-- Wjazd -->
     <string name="fields_entry_section">Wjazd na pole (można pominąć)</string>

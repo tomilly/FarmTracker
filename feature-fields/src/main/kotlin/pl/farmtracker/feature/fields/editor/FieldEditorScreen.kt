@@ -73,14 +73,16 @@ import pl.farmtracker.feature.fields.common.ColorPicker
 @Composable
 fun FieldEditorScreen(
     onBack: () -> Unit,
-    onSaved: () -> Unit,
+    onDone: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FieldEditorViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val existingFields by viewModel.existingFields.collectAsStateWithLifecycle()
 
-    LaunchedEffect(uiState.saved) { if (uiState.saved) onSaved() }
+    LaunchedEffect(uiState.done) { if (uiState.done) onDone() }
+    // Edytowane pole jeszcze się wczytuje – pusty ekran zamiast mignięcia mapy tworzenia pola.
+    if (uiState.loadingField) return
 
     when (uiState.step) {
         EditorStep.SHAPE -> MapScaffold(
@@ -120,15 +122,18 @@ fun FieldEditorScreen(
         }
         EditorStep.DETAILS -> {
             // „Wstecz" z formularza wraca do mapy z wybranym kształtem, a nie wyrzuca z tworzenia pola.
-            BackHandler(onBack = viewModel::backToShape)
+            // W edycji „Wstecz" zamyka ekran; przy tworzeniu wraca do mapy z wybranym kształtem.
+            val back = if (uiState.isEditing) onBack else viewModel::backToShape
+            BackHandler(onBack = back)
             FieldDetailsStep(
                 uiState = uiState,
-                onBack = viewModel::backToShape,
+                onBack = back,
                 onNameChanged = viewModel::onNameChanged,
                 onColorSelected = viewModel::onColorSelected,
                 onMarkEntry = viewModel::openEntry,
                 onRemoveEntry = viewModel::clearEntry,
                 onSave = viewModel::save,
+                onDelete = viewModel::delete,
                 modifier = modifier,
             )
         }
@@ -380,11 +385,12 @@ internal fun FieldDetailsStep(
     onMarkEntry: () -> Unit,
     onRemoveEntry: () -> Unit,
     onSave: () -> Unit,
+    onDelete: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
     FarmTrackerScaffold(
-        title = stringResource(R.string.fields_new_title),
+        title = stringResource(if (uiState.isEditing) R.string.fields_edit_title else R.string.fields_new_title),
         icon = Icons.Filled.AddLocationAlt,
         onBack = onBack,
         modifier = modifier,
@@ -451,13 +457,27 @@ internal fun FieldDetailsStep(
 
         Text(stringResource(R.string.fields_color_label), style = MaterialTheme.typography.titleMedium)
         ColorPicker(selected = uiState.color, onSelect = onColorSelected)
+
+        if (uiState.isEditing) {
+            BigActionButton(
+                text = stringResource(R.string.fields_delete),
+                icon = Icons.Filled.Delete,
+                onClick = onDelete,
+                tone = Tone.Stop,
+            )
+        }
     }
 }
 
 @Composable
-private fun shapeSummaryText(uiState: FieldEditorUiState): String = when (uiState.shapeMode) {
-    ShapeMode.PARCELS -> parcelsCount(uiState.parcels.size)
-    ShapeMode.DRAW -> cornersCount(uiState.drawnPoints.size)
+private fun shapeSummaryText(uiState: FieldEditorUiState): String {
+    val editing = uiState.editing
+    return when {
+        editing != null && editing.parcelIds.isNotEmpty() -> parcelsCount(editing.parcelIds.size)
+        editing != null -> cornersCount(editing.shape.firstOrNull()?.outer?.size ?: 0)
+        uiState.shapeMode == ShapeMode.PARCELS -> parcelsCount(uiState.parcels.size)
+        else -> cornersCount(uiState.drawnPoints.size)
+    }
 }
 
 private val PreviewParcel = Parcel(

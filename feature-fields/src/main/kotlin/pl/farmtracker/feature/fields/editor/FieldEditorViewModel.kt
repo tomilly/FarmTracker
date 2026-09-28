@@ -1,5 +1,6 @@
 package pl.farmtracker.feature.fields.editor
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +29,7 @@ import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelRepository
 import pl.farmtracker.data.parcel.ParcelSearch
+import pl.farmtracker.feature.fields.common.DeletedFieldBin
 import java.util.UUID
 import javax.inject.Inject
 
@@ -65,11 +67,18 @@ data class FieldEditorUiState(
     val entryPoint: GeoPoint? = null,
     /** Domyślna nazwa i kolor ustawiane tylko przy pierwszym wejściu do formularza. */
     val detailsPrefilled: Boolean = false,
-    val saved: Boolean = false,
+    /** Edytowane istniejące pole (`null` przy tworzeniu nowego). */
+    val editing: Field? = null,
+    /** Ekran skończył pracę (zapisano, usunięto albo pola już nie ma) – wracamy do listy. */
+    val done: Boolean = false,
+    /** Czekamy na wczytanie edytowanego pola – UI nie pokazuje jeszcze niczego. */
+    val loadingField: Boolean = false,
 ) {
+    val isEditing: Boolean get() = editing != null
+
     /** Kształt pola, który zostanie zapisany. Rysunek liczy się od trzech rogów. */
     val fieldShape: List<GeoPolygon>
-        get() = when (shapeMode) {
+        get() = editing?.shape ?: when (shapeMode) {
             ShapeMode.PARCELS -> parcels.flatMap { it.shape }
             ShapeMode.DRAW -> if (drawnPoints.size >= MIN_CORNERS) listOf(GeoPolygon(drawnPoints)) else emptyList()
         }
@@ -87,12 +96,37 @@ data class FieldEditorUiState(
 /**
  * Tworzenie pola: 1) na mapie wybiera się działki (dotykiem albo po numerze) albo rysuje rogi,
  * 2) nazwa, kolor i opcjonalnie wjazd. Nic nie jest zapisywane przed „Zapisz pole".
+ *
+ * Edycja istniejącego pola (argument [FIELD_ID_ARG]) zaczyna od razu od kroku 2; kształt zostaje.
  */
 @HiltViewModel
 class FieldEditorViewModel @Inject constructor(
     private val parcelRepository: ParcelRepository,
     private val fieldRepository: FieldRepository,
+    private val deletedFieldBin: DeletedFieldBin,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    private fun loadForEditing(fieldId: String) {
+        viewModelScope.launch {
+            val field = fieldRepository.fields.first().firstOrNull { it.id == fieldId }
+            _uiState.update { state ->
+                if (field == null) {
+                    state.copy(done = true, loadingField = false)
+                } else {
+                    state.copy(
+                        step = EditorStep.DETAILS,
+                        editing = field,
+                        name = field.name,
+                        color = field.color,
+                        entryPoint = field.entryPoint,
+                        detailsPrefilled = true,
+                        loadingField = false,
+                    )
+                }
+            }
+        }
+    }
 
     /** Do wyznaczania pola od razu zdjęcie lotnicze i granice działek. */
     val chrome = MapChromeController(MapChromeState(baseLayer = BaseLayer.PHOTO, showParcels = true))
@@ -101,10 +135,17 @@ class FieldEditorViewModel @Inject constructor(
     val existingFields: StateFlow<List<Field>> = fieldRepository.fields
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _uiState = MutableStateFlow(FieldEditorUiState())
+    private val _uiState = MutableStateFlow(
+        FieldEditorUiState(loadingField = savedStateHandle.get<String>(FIELD_ID_ARG) != null),
+    )
     val uiState: StateFlow<FieldEditorUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+
+    // Po deklaracji stanu – wczytanie może zaktualizować stan od razu, bez zawieszania.
+    init {
+        savedStateHandle.get<String>(FIELD_ID_ARG)?.let(::loadForEditing)
+    }
 
     fun onMapTapped(point: GeoPoint) {
         val state = _uiState.value
@@ -231,38 +272,54 @@ class FieldEditorViewModel @Inject constructor(
 
     fun save() {
         val state = _uiState.value
-        if (!state.canSave || state.saved) return
+        if (!state.canSave || state.done) return
         viewModelScope.launch {
-            val existing = fieldRepository.fields.first()
-            fieldRepository.save(
-                Field(
-                    id = UUID.randomUUID().toString(),
-                    name = state.name.trim(),
-                    color = state.color,
-                    shape = state.fieldShape,
-                    parcelIds = if (state.shapeMode == ShapeMode.PARCELS) state.parcels.map { it.id } else emptyList(),
-                    entryPoint = state.entryPoint,
-                    order = (existing.maxOfOrNull { it.order } ?: -1) + 1,
-                ),
+            val field = state.editing?.copy(
+                name = state.name.trim(),
+                color = state.color,
+                entryPoint = state.entryPoint,
+            ) ?: Field(
+                id = UUID.randomUUID().toString(),
+                name = state.name.trim(),
+                color = state.color,
+                shape = state.fieldShape,
+                parcelIds = if (state.shapeMode == ShapeMode.PARCELS) state.parcels.map { it.id } else emptyList(),
+                entryPoint = state.entryPoint,
+                order = (fieldRepository.fields.first().maxOfOrNull { it.order } ?: -1) + 1,
             )
-            _uiState.update { it.copy(saved = true) }
+            fieldRepository.save(field)
+            _uiState.update { it.copy(done = true) }
         }
     }
 
-    private companion object {
-        fun List<Parcel>.plusUnique(parcel: Parcel): List<Parcel> =
+    /** Usuwa od razu – bez „czy na pewno?"; lista pól pozwoli to cofnąć. */
+    fun delete() {
+        val field = _uiState.value.editing ?: return
+        if (_uiState.value.done) return
+        viewModelScope.launch {
+            deletedFieldBin.put(field)
+            fieldRepository.delete(field.id)
+            _uiState.update { it.copy(done = true) }
+        }
+    }
+
+    companion object {
+        /** Nazwa argumentu nawigacji z id edytowanego pola (pole `fieldId` trasy). */
+        const val FIELD_ID_ARG = "fieldId"
+
+        private fun List<Parcel>.plusUnique(parcel: Parcel): List<Parcel> =
             if (any { it.id == parcel.id }) this else this + parcel
 
-        fun Parcel.distanceKmFrom(point: GeoPoint): Double? =
+        private fun Parcel.distanceKmFrom(point: GeoPoint): Double? =
             shape.bounds()?.center?.distanceMetersTo(point)?.div(1000.0)
 
         /** Podpowiedź nazwy: obręb i numer pierwszej działki, np. „Bystrzyca 2285" – łatwo zmienić. */
-        fun suggestedName(state: FieldEditorUiState): String = when (state.shapeMode) {
+        private fun suggestedName(state: FieldEditorUiState): String = when (state.shapeMode) {
             ShapeMode.PARCELS -> state.parcels.firstOrNull()?.let { "${it.precinct} ${it.number}" }.orEmpty()
             ShapeMode.DRAW -> ""
         }
 
-        fun firstFreeColor(used: Set<FieldColor>): FieldColor =
+        private fun firstFreeColor(used: Set<FieldColor>): FieldColor =
             FieldColor.entries.firstOrNull { it !in used } ?: FieldColor.entries.first()
     }
 }

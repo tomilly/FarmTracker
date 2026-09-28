@@ -1,5 +1,6 @@
 package pl.farmtracker.feature.fields.editor
 
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -19,6 +20,7 @@ import pl.farmtracker.core.testing.FakeParcelRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelSearch
+import pl.farmtracker.feature.fields.common.DeletedFieldBin
 
 class FieldEditorViewModelTest {
 
@@ -29,7 +31,15 @@ class FieldEditorViewModelTest {
     private val fields = FakeFieldRepository()
 
     // Leniwie: ViewModel musi powstać po podmianie Dispatchers.Main przez regułę.
-    private val viewModel by lazy { FieldEditorViewModel(parcels, fields).also { it.chrome.onCameraIdle(16.0) } }
+    private val bin = DeletedFieldBin()
+    private val viewModel by lazy { editor().also { it.chrome.onCameraIdle(16.0) } }
+
+    private fun editor(fieldId: String? = null) = FieldEditorViewModel(
+        parcels,
+        fields,
+        bin,
+        SavedStateHandle(if (fieldId == null) emptyMap() else mapOf(FieldEditorViewModel.FIELD_ID_ARG to fieldId)),
+    )
     private val state get() = viewModel.uiState.value
 
     private fun square(lat: Double, lon: Double) =
@@ -149,7 +159,7 @@ class FieldEditorViewModelTest {
         viewModel.save()
 
         assertFalse(state.canSave)
-        assertFalse(state.saved)
+        assertFalse(state.done)
     }
 
     @Test
@@ -162,7 +172,7 @@ class FieldEditorViewModelTest {
 
         viewModel.save()
 
-        assertTrue(state.saved)
+        assertTrue(state.done)
         val saved = fields.fields.first().single()
         assertEquals("Za lasem", saved.name)
         assertEquals(FieldColor.PURPLE, saved.color)
@@ -302,5 +312,63 @@ class FieldEditorViewModelTest {
         viewModel.goToDetails()
 
         assertEquals(FieldColor.BROWN, state.color)
+    }
+
+    private val existing = Field(
+        id = "f-1",
+        name = "Za lasem",
+        color = FieldColor.CYAN,
+        shape = listOf(square(50.02, 17.0)),
+        parcelIds = listOf("id-a", "id-b"),
+        order = 4,
+    )
+
+    @Test
+    fun `editing opens the form filled with the field`() = runTest {
+        fields.save(existing)
+
+        val edit = editor(fieldId = "f-1")
+
+        val state = edit.uiState.value
+        assertEquals(EditorStep.DETAILS, state.step)
+        assertEquals("Za lasem", state.name)
+        assertEquals(FieldColor.CYAN, state.color)
+        assertEquals(existing.shape, state.fieldShape)
+        assertFalse(state.loadingField)
+    }
+
+    @Test
+    fun `saving an edit keeps id, shape, parcels and order`() = runTest {
+        fields.save(existing)
+        val edit = editor(fieldId = "f-1")
+
+        edit.onNameChanged("Przy lesie")
+        edit.onColorSelected(FieldColor.PINK)
+        edit.save()
+
+        assertEquals(
+            listOf(existing.copy(name = "Przy lesie", color = FieldColor.PINK)),
+            fields.fields.first(),
+        )
+        assertTrue(edit.uiState.value.done)
+    }
+
+    @Test
+    fun `deleting removes the field at once and keeps it for undo`() = runTest {
+        fields.save(existing)
+        val edit = editor(fieldId = "f-1")
+
+        edit.delete()
+
+        assertTrue(fields.fields.first().isEmpty())
+        assertEquals(existing, bin.lastDeleted.value)
+        assertTrue(edit.uiState.value.done)
+    }
+
+    @Test
+    fun `editing a field that no longer exists just closes`() {
+        val edit = editor(fieldId = "gone")
+
+        assertTrue(edit.uiState.value.done)
     }
 }

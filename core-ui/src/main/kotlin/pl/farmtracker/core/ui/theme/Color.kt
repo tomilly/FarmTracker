@@ -13,6 +13,8 @@ private val Ink = Color(0xFF111411)
 internal val LightColors = lightColorScheme(
     primary = Color(0xFF1B5E20),
     onPrimary = White,
+    // Kolor akcji na ciemnym pasku komunikatu (np. „Cofnij") – domyślnie byłby fioletowy.
+    inversePrimary = Color(0xFFA5D6A7),
     primaryContainer = Color(0xFFD7EED8),
     onPrimaryContainer = Color(0xFF0A2E0D),
     secondary = Color(0xFF5D4037),
@@ -31,6 +33,7 @@ internal val LightColors = lightColorScheme(
 internal val DarkColors = darkColorScheme(
     primary = Color(0xFF388E3C),
     onPrimary = White,
+    inversePrimary = Color(0xFF1B5E20),
     primaryContainer = Color(0xFF1B3A1D),
     onPrimaryContainer = Color(0xFFD7EED8),
     secondary = Color(0xFFD7CCC8),

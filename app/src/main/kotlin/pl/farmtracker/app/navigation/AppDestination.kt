@@ -30,9 +30,12 @@ data object MapDestination
 @Serializable
 data object FieldsListDestination
 
-/** Tworzenie nowego pola na mapie. */
+/**
+ * Tworzenie nowego pola (`fieldId == null`) albo edycja istniejącego. Nazwa właściwości musi się
+ * zgadzać z `FieldEditorViewModel.FIELD_ID_ARG`.
+ */
 @Serializable
-data object FieldEditorDestination
+data class FieldEditorDestination(val fieldId: String? = null)
 
 /** Ekran, na który trafia osoba o danej roli; bez roli – wybór roli (tymczasowo, do M3). */
 fun Role?.toDestination(): AppDestination = when (this) {

@@ -6,8 +6,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -29,16 +34,37 @@ import pl.farmtracker.feature.fields.common.FieldCard
 fun FieldsListScreen(
     onBack: () -> Unit,
     onAddField: () -> Unit,
+    onEditField: (fieldId: String) -> Unit,
     onShowMap: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FieldsListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val recentlyDeleted by viewModel.recentlyDeleted.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Usunięcie bez pytania „czy na pewno?" – zamiast tego „Cofnij" przez dłuższą chwilę.
+    val deletedField = recentlyDeleted
+    if (deletedField != null) {
+        val message = stringResource(R.string.fields_deleted, deletedField.name)
+        val undo = stringResource(R.string.fields_undo)
+        LaunchedEffect(deletedField) {
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = undo,
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete() else viewModel.dismissDeleted()
+        }
+    }
+
     FieldsListContent(
         uiState = uiState,
         onBack = onBack,
         onAddField = onAddField,
+        onEditField = onEditField,
         onShowMap = onShowMap,
+        snackbarHostState = snackbarHostState,
         modifier = modifier,
     )
 }
@@ -48,13 +74,16 @@ internal fun FieldsListContent(
     uiState: FieldsListUiState,
     onBack: () -> Unit,
     onAddField: () -> Unit,
+    onEditField: (fieldId: String) -> Unit,
     onShowMap: () -> Unit,
     modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     FarmTrackerScaffold(
         title = stringResource(R.string.fields_title),
         icon = Icons.Filled.Grass,
         onBack = onBack,
+        snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) {
         BigActionButton(
@@ -67,7 +96,7 @@ internal fun FieldsListContent(
             if (uiState.fields.isEmpty()) {
                 StatusPill(text = stringResource(R.string.fields_empty), icon = Icons.Filled.Info)
             } else {
-                uiState.fields.forEach { field -> FieldCard(field) }
+                uiState.fields.forEach { field -> FieldCard(field, onClick = { onEditField(field.id) }) }
                 BigActionButton(
                     text = stringResource(R.string.fields_show_on_map),
                     icon = Icons.Filled.Map,
@@ -94,6 +123,7 @@ private fun FieldsListPreview() {
             ),
             onBack = {},
             onAddField = {},
+            onEditField = {},
             onShowMap = {},
         )
     }
@@ -103,6 +133,12 @@ private fun FieldsListPreview() {
 @Composable
 private fun FieldsListEmptyPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        FieldsListContent(uiState = FieldsListUiState.Ready(emptyList()), onBack = {}, onAddField = {}, onShowMap = {})
+        FieldsListContent(
+            uiState = FieldsListUiState.Ready(emptyList()),
+            onBack = {},
+            onAddField = {},
+            onEditField = {},
+            onShowMap = {},
+        )
     }
 }

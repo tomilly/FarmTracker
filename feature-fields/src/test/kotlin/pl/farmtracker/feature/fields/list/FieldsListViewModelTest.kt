@@ -9,6 +9,7 @@ import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
+import pl.farmtracker.feature.fields.common.DeletedFieldBin
 
 class FieldsListViewModelTest {
 
@@ -18,7 +19,7 @@ class FieldsListViewModelTest {
     @Test
     fun `shows fields from the repository and follows changes`() = runTest {
         val repository = FakeFieldRepository()
-        val viewModel = FieldsListViewModel(repository)
+        val viewModel = FieldsListViewModel(repository, DeletedFieldBin())
         val field = Field(id = "1", name = "Za lasem", color = FieldColor.BLUE, shape = emptyList())
 
         viewModel.uiState.test {
@@ -30,5 +31,32 @@ class FieldsListViewModelTest {
 
             assertEquals(FieldsListUiState.Ready(listOf(field)), awaitItem())
         }
+    }
+
+    @Test
+    fun `undo brings a deleted field back once`() = runTest {
+        val repository = FakeFieldRepository()
+        val bin = DeletedFieldBin()
+        val viewModel = FieldsListViewModel(repository, bin)
+        val field = Field(id = "1", name = "Za lasem", color = FieldColor.BLUE, shape = emptyList())
+        bin.put(field)
+
+        assertEquals(field, viewModel.recentlyDeleted.value)
+        viewModel.undoDelete()
+        viewModel.undoDelete()
+
+        assertEquals(listOf(field), repository.fields.value)
+        assertEquals(null, viewModel.recentlyDeleted.value)
+    }
+
+    @Test
+    fun `dismissing forgets the deleted field`() {
+        val bin = DeletedFieldBin()
+        val viewModel = FieldsListViewModel(FakeFieldRepository(), bin)
+        bin.put(Field(id = "1", name = "Za lasem", color = FieldColor.BLUE, shape = emptyList()))
+
+        viewModel.dismissDeleted()
+
+        assertEquals(null, viewModel.recentlyDeleted.value)
     }
 }

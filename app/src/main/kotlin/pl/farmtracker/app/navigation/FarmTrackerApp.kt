@@ -64,14 +64,15 @@ private fun FarmTrackerNavHost(
         composable<FieldsListDestination> {
             FieldsListScreen(
                 onBack = { navController.popBackStack() },
-                onAddField = { navController.navigate(FieldEditorDestination) { launchSingleTop = true } },
+                onAddField = { navController.navigate(FieldEditorDestination()) { launchSingleTop = true } },
+                onEditField = { id -> navController.navigate(FieldEditorDestination(id)) { launchSingleTop = true } },
                 onShowMap = openMap,
             )
         }
         composable<FieldEditorDestination> {
             FieldEditorScreen(
                 onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
             )
         }
     }

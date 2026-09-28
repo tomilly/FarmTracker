@@ -43,9 +43,10 @@ granice działek KIEG (WMS w 3× rozdzielczości, od zoomu 13,5; na zdjęciu bia
 zaznaczanie działki dotknięciem (ULDK GetParcelByXY → nakładka + numer, obręb, ha).
 Adresy usług: `feature-map/.../MapSources.kt`, ULDK: `data/.../parcel/UldkParcelRepository.kt`.
 Geometria (WKT, powierzchnia) w `core-domain/.../geo`.
-M2 w toku (`feature-fields`, zapis lokalny w DataStore JSON – `data/.../field`): lista pól (admin → „Pola"),
-nowe pole z dotkniętych działek (ULDK) → nazwa + kolor → zapis; pola widoczne na mapie każdej roli.
-Zostało: rysowanie pola po rogach, szukanie działki po numerze, punkt wjazdu, edycja/usuwanie z „Cofnij".
+M2 gotowe (`feature-fields`, zapis lokalny w DataStore JSON – `data/.../field`): lista pól (admin → „Pola"),
+nowe pole z działek (dotyk / numer „Otusz 125") albo narysowane po rogach → nazwa, kolor, wjazd → zapis;
+edycja i usuwanie z „Cofnij" (`DeletedFieldBin`); pola i wjazdy widoczne na mapie każdej roli.
+Następny: M3 – Firebase Auth (SMS), zbiór, zaproszenia, role.
 Kamienie milowe: docs/BRIEF.md §9.
 
 ## Emulator (uwagi)
