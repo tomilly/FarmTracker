@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wybór roli (tymczasowo, do czasu logowania w M3) -->
+    <string name="roles_picker_title">Kim jesteś?</string>
+    <string name="roles_picker_hint">Wybierz, co dziś robisz.</string>
+
+    <!-- Sieczkarnia -->
+    <string name="roles_harvester_not_working">Nie pracujesz</string>
+    <string name="roles_harvester_working">Pracujesz na polu</string>
+    <string name="roles_harvester_moving">Przejeżdżasz na inne pole</string>
+    <string name="roles_harvester_start_work">Zaczynam pracę</string>
+    <string name="roles_harvester_stop_work">Kończę pracę</string>
+    <string name="roles_harvester_start_moving">Przejeżdżam na inne pole</string>
+    <string name="roles_harvester_arrived">Jestem na polu</string>
+
+    <!-- Kierowca -->
+    <string name="roles_driver_pick_status">Wybierz, co teraz robisz</string>
+    <string name="roles_driver_current_status">Teraz: %1$s</string>
+    <string name="roles_driver_to_field">Jadę na pole</string>
+    <string name="roles_driver_loading">Ładuję</string>
+    <string name="roles_driver_to_base">Wiozę do bazy</string>
+    <string name="roles_driver_unloading">Rozładunek</string>
+    <string name="roles_undo">Cofnij</string>
+
+    <!-- Baza -->
+    <string name="roles_base_incoming_title">Kto jedzie do bazy</string>
+    <string name="roles_base_nobody_incoming">Nikt teraz nie jedzie z ładunkiem.</string>
+
+    <!-- Admin -->
+    <string name="roles_admin_fields">Pola</string>
+    <string name="roles_admin_people">Ludzie</string>
+    <string name="roles_admin_settings">Ustawienia</string>
+    <string name="roles_admin_coming_soon">Ta funkcja będzie wkrótce.</string>
+</resources>

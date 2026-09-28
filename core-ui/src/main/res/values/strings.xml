@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_ui_role_admin">Admin</string>
+    <string name="core_ui_role_harvester">Sieczkarnia</string>
+    <string name="core_ui_role_driver">Kierowca</string>
+    <string name="core_ui_role_base">Baza</string>
+    <string name="core_ui_switch_role">Zmień rolę</string>
+</resources>
