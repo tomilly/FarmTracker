@@ -6,4 +6,10 @@
     <string name="core_ui_role_base">Baza</string>
     <string name="core_ui_switch_role">Zmień rolę</string>
     <string name="core_ui_back">Wróć</string>
+    <string name="core_ui_color_blue">Niebieski</string>
+    <string name="core_ui_color_orange">Pomarańczowy</string>
+    <string name="core_ui_color_purple">Fioletowy</string>
+    <string name="core_ui_color_pink">Różowy</string>
+    <string name="core_ui_color_cyan">Turkusowy</string>
+    <string name="core_ui_color_brown">Brązowy</string>
 </resources>

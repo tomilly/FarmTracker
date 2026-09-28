@@ -37,6 +37,12 @@ internal object MapSources {
      */
     const val PARCELS_MIN_ZOOM = 13.5
 
+    const val FIELDS_SOURCE_ID = "fields"
+    const val FIELD_LABELS_SOURCE_ID = "field-labels"
+    const val FIELDS_FILL_LAYER_ID = "fields-fill"
+    const val FIELDS_LINE_LAYER_ID = "fields-line"
+    const val FIELDS_LABEL_LAYER_ID = "fields-label"
+
     const val SELECTION_SOURCE_ID = "selected-parcel"
     const val SELECTION_FILL_LAYER_ID = "selected-parcel-fill"
     const val SELECTION_LINE_LAYER_ID = "selected-parcel-line"

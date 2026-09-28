@@ -9,6 +9,7 @@ import org.junit.Test
 import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.parcel.ParcelLookup
@@ -20,7 +21,7 @@ class MapViewModelTest {
 
     private val parcels = FakeParcelRepository()
     // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
-    private val viewModel by lazy { MapViewModel(parcels) }
+    private val viewModel by lazy { MapViewModel(parcels, FakeFieldRepository()) }
     private val selection get() = viewModel.parcelSelection.value
 
     private val tapPoint = GeoPoint(latitude = 50.98, longitude = 17.42)

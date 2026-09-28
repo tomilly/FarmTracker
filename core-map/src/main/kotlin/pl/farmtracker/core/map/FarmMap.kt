@@ -3,6 +3,7 @@ package pl.farmtracker.core.map
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -37,7 +39,12 @@ import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.layers.PropertyFactory.rasterBrightnessMin
 import org.maplibre.android.style.layers.PropertyFactory.rasterSaturation
+import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textField
+import org.maplibre.android.style.layers.PropertyFactory.textFont
+import org.maplibre.android.style.layers.PropertyFactory.textHaloColor
+import org.maplibre.android.style.layers.PropertyFactory.textHaloWidth
+import org.maplibre.android.style.layers.PropertyFactory.textSize
 import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.SymbolLayer
@@ -48,8 +55,12 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.MultiPolygon
 import org.maplibre.geojson.Point
+import pl.farmtracker.core.domain.Field
+import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.ui.FieldColorUi
+import java.util.Locale
 
 private val PolandCenter = LatLng(52.07, 19.48)
 private const val MY_LOCATION_ZOOM = 16.0
@@ -60,6 +71,16 @@ private const val SELECTION_FILL_COLOR = "#FFD600"
 private const val SELECTION_FILL_OPACITY = 0.35f
 private const val SELECTION_LINE_COLOR = "#FF6F00"
 private const val SELECTION_LINE_WIDTH = 3f
+
+private const val FIELD_COLOR_PROPERTY = "color"
+private const val FIELD_NAME_PROPERTY = "name"
+private const val FIELD_FILL_OPACITY = 0.3f
+private const val FIELD_LINE_WIDTH = 2.5f
+
+// Czcionka z mapy bazowej (OpenFreeMap); biały tekst z czarną obwódką czytelny i na mapie, i na zdjęciu.
+private const val FIELD_LABEL_FONT = "Noto Sans Bold"
+private const val FIELD_LABEL_SIZE = 15f
+private const val FIELD_LABEL_HALO = 1.5f
 
 /**
  * Mapa MapLibre w Compose. Stan (warstwy, prośby o wyśrodkowanie) przychodzi z góry;
@@ -116,6 +137,14 @@ internal fun FarmMap(
 
     LaunchedEffect(style, baseLayer, showParcels) {
         style?.applyVisibility(baseLayer, showParcels)
+    }
+
+    LaunchedEffect(style, overlays.fields) {
+        val loadedStyle = style ?: return@LaunchedEffect
+        loadedStyle.getSourceAs<GeoJsonSource>(MapSources.FIELDS_SOURCE_ID)
+            ?.setGeoJson(overlays.fields.toFieldsFeatureCollection())
+        loadedStyle.getSourceAs<GeoJsonSource>(MapSources.FIELD_LABELS_SOURCE_ID)
+            ?.setGeoJson(overlays.fields.toLabelsFeatureCollection())
     }
 
     LaunchedEffect(style, overlays.highlight) {
@@ -203,25 +232,77 @@ private fun Style.addFarmLayers() {
         addLayer(parcels)
     }
 
+    // Pola: kolor z właściwości obiektu, półprzezroczyste (widać zdjęcie i granice działek), nazwa na środku.
+    addSource(GeoJsonSource(MapSources.FIELDS_SOURCE_ID))
+    addSource(GeoJsonSource(MapSources.FIELD_LABELS_SOURCE_ID))
+    val fieldColor = Expression.toColor(Expression.get(FIELD_COLOR_PROPERTY))
+    val fieldsFill = FillLayer(MapSources.FIELDS_FILL_LAYER_ID, MapSources.FIELDS_SOURCE_ID)
+        .withProperties(fillColor(fieldColor), fillOpacity(FIELD_FILL_OPACITY))
+    val fieldsLine = LineLayer(MapSources.FIELDS_LINE_LAYER_ID, MapSources.FIELDS_SOURCE_ID)
+        .withProperties(lineColor(fieldColor), lineWidth(FIELD_LINE_WIDTH))
+    val fieldsLabel = SymbolLayer(MapSources.FIELDS_LABEL_LAYER_ID, MapSources.FIELD_LABELS_SOURCE_ID)
+        .withProperties(
+            textField(Expression.get(FIELD_NAME_PROPERTY)),
+            textFont(arrayOf(FIELD_LABEL_FONT)),
+            textSize(FIELD_LABEL_SIZE),
+            textColor(Color.WHITE),
+            textHaloColor(Color.BLACK),
+            textHaloWidth(FIELD_LABEL_HALO),
+        )
+    addLayerAbove(fieldsFill, MapSources.PARCELS_LAYER_ID)
+    addLayerAbove(fieldsLine, MapSources.FIELDS_FILL_LAYER_ID)
+
     // Zaznaczona działka: półprzezroczyste wypełnienie (widać zdjęcie pod spodem) + wyraźny obrys.
     addSource(GeoJsonSource(MapSources.SELECTION_SOURCE_ID))
     val selectionFill = FillLayer(MapSources.SELECTION_FILL_LAYER_ID, MapSources.SELECTION_SOURCE_ID)
         .withProperties(fillColor(SELECTION_FILL_COLOR), fillOpacity(SELECTION_FILL_OPACITY))
     val selectionLine = LineLayer(MapSources.SELECTION_LINE_LAYER_ID, MapSources.SELECTION_SOURCE_ID)
         .withProperties(lineColor(SELECTION_LINE_COLOR), lineWidth(SELECTION_LINE_WIDTH))
-    addLayerAbove(selectionFill, MapSources.PARCELS_LAYER_ID)
+    addLayerAbove(selectionFill, MapSources.FIELDS_LINE_LAYER_ID)
     addLayerAbove(selectionLine, MapSources.SELECTION_FILL_LAYER_ID)
+    // Nazwy pól na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
+    addLayer(fieldsLabel)
 }
+
+private fun List<Field>.toFieldsFeatureCollection(): FeatureCollection = FeatureCollection.fromFeatures(
+    map { field ->
+        Feature.fromGeometry(field.shape.toMultiPolygon()).apply {
+            addStringProperty(FIELD_COLOR_PROPERTY, FieldColorUi.color(field.color).toHex())
+        }
+    },
+)
+
+private fun List<Field>.toLabelsFeatureCollection(): FeatureCollection = FeatureCollection.fromFeatures(
+    mapNotNull { field ->
+        field.labelPoint()?.let { point ->
+            Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
+                addStringProperty(FIELD_NAME_PROPERTY, field.name)
+            }
+        }
+    },
+)
+
+/** Środek największej części pola (średnia wierzchołków obrysu) – wystarczy dla zwykłych pól. */
+private fun Field.labelPoint(): GeoPoint? {
+    val ring = shape.maxByOrNull { GeoArea.squareMeters(it) }?.outer?.takeIf { it.isNotEmpty() } ?: return null
+    return GeoPoint(latitude = ring.map { it.latitude }.average(), longitude = ring.map { it.longitude }.average())
+}
+
+private fun androidx.compose.ui.graphics.Color.toHex(): String =
+    String.format(Locale.ROOT, "#%06X", 0xFFFFFF and toArgb())
 
 private fun List<GeoPolygon>.toFeatureCollection(): FeatureCollection {
     if (isEmpty()) return FeatureCollection.fromFeatures(emptyList<Feature>())
-    val polygons = map { polygon ->
+    return FeatureCollection.fromFeature(Feature.fromGeometry(toMultiPolygon()))
+}
+
+private fun List<GeoPolygon>.toMultiPolygon(): MultiPolygon = MultiPolygon.fromLngLats(
+    map { polygon ->
         (listOf(polygon.outer) + polygon.holes).map { ring ->
             ring.map { Point.fromLngLat(it.longitude, it.latitude) }
         }
-    }
-    return FeatureCollection.fromFeature(Feature.fromGeometry(MultiPolygon.fromLngLats(polygons)))
-}
+    },
+)
 
 /**
  * Styl bazowy podpisuje miejscowości po angielsku (name_en). Dla rolników: polska nazwa, a gdy jej brak –

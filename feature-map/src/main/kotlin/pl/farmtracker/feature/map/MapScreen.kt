@@ -51,6 +51,7 @@ fun MapScreen(
 ) {
     val selection by viewModel.parcelSelection.collectAsStateWithLifecycle()
     val chrome by viewModel.chrome.state.collectAsStateWithLifecycle()
+    val fields by viewModel.fields.collectAsStateWithLifecycle()
 
     MapScaffold(
         title = stringResource(R.string.map_title),
@@ -58,7 +59,7 @@ fun MapScreen(
         onBack = onBack,
         chrome = viewModel.chrome,
         onMapTap = viewModel::onMapTapped,
-        overlays = MapOverlays(highlight = selection.selectedParcel?.shape.orEmpty()),
+        overlays = MapOverlays(fields = fields, highlight = selection.selectedParcel?.shape.orEmpty()),
         modifier = modifier,
     ) {
         ParcelMessage(
