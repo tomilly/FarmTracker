@@ -3,9 +3,11 @@ package pl.farmtracker.feature.fields.editor
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,7 +45,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -63,6 +64,7 @@ import pl.farmtracker.core.ui.component.FarmTrackerScaffold
 import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.format.formatHectares
+import pl.farmtracker.core.ui.format.pluralStringPl
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
@@ -175,29 +177,28 @@ private fun ParcelsPanel(
     onDraw: () -> Unit,
     onNext: () -> Unit,
 ) {
-    when {
-        uiState.pendingLookups > 0 -> StatusPill(
-            text = stringResource(R.string.fields_searching),
-            icon = Icons.Filled.Search,
-        )
-        uiState.lastProblem == LookupProblem.NOT_FOUND -> StatusPill(
-            text = stringResource(R.string.fields_not_found),
-            icon = Icons.Filled.Info,
-            tone = Tone.Warning,
-        )
-        uiState.lastProblem == LookupProblem.UNAVAILABLE -> StatusPill(
-            text = stringResource(R.string.fields_unavailable),
-            icon = Icons.Filled.CloudOff,
-            tone = Tone.Warning,
-        )
-        uiState.parcels.isEmpty() -> StatusPill(
-            text = stringResource(R.string.fields_tap_parcels_hint),
-            icon = Icons.Filled.TouchApp,
-        )
+    MessageSlot {
+        if (uiState.parcels.isEmpty()) {
+            when {
+                uiState.pendingLookups > 0 -> StatusPill(stringResource(R.string.fields_searching), Icons.Filled.Search)
+                uiState.lastProblem != null -> ProblemPill(uiState.lastProblem)
+                else -> StatusPill(stringResource(R.string.fields_tap_parcels_hint), Icons.Filled.TouchApp)
+            }
+        } else {
+            ShapeSummary(
+                title = parcelsCount(uiState.parcels.size),
+                detail = when {
+                    uiState.pendingLookups > 0 -> SummaryDetail.Note(stringResource(R.string.fields_searching))
+                    uiState.lastProblem != null -> SummaryDetail.Warning(problemText(uiState.lastProblem))
+                    else -> SummaryDetail.Area(uiState.areaHectares)
+                },
+                onUndo = onUndo,
+            )
+        }
     }
     if (uiState.parcels.isEmpty()) {
         // Dwie pozostałe drogi do kształtu pola: po numerze albo narysowanie, gdy pole ≠ działki.
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ButtonPair {
             BigActionButton(
                 text = stringResource(R.string.fields_search_by_number),
                 icon = Icons.Filled.Search,
@@ -214,13 +215,8 @@ private fun ParcelsPanel(
             )
         }
     } else {
-        ShapeSummary(
-            title = pluralStringResource(R.plurals.fields_selected_parcels, uiState.parcels.size, uiState.parcels.size),
-            areaHectares = uiState.areaHectares,
-            onUndo = onUndo,
-        )
         // Obok „Dalej" nadal można dołożyć działkę po numerze.
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ButtonPair {
             BigActionButton(
                 text = stringResource(R.string.fields_search_short),
                 icon = Icons.Filled.Search,
@@ -236,17 +232,22 @@ private fun ParcelsPanel(
 @Composable
 private fun DrawPanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onPickParcels: () -> Unit, onNext: () -> Unit) {
     val corners = uiState.drawnPoints.size
-    if (!uiState.canContinue) {
-        StatusPill(text = stringResource(R.string.fields_draw_hint), icon = Icons.Filled.TouchApp)
+    MessageSlot {
+        if (corners == 0) {
+            StatusPill(stringResource(R.string.fields_draw_hint), Icons.Filled.TouchApp)
+        } else {
+            ShapeSummary(
+                title = cornersCount(corners),
+                detail = if (uiState.canContinue) {
+                    SummaryDetail.Area(uiState.areaHectares)
+                } else {
+                    SummaryDetail.Note(stringResource(R.string.fields_draw_more))
+                },
+                onUndo = onUndo,
+            )
+        }
     }
-    if (corners > 0) {
-        ShapeSummary(
-            title = pluralStringResource(R.plurals.fields_corners, corners, corners),
-            areaHectares = uiState.areaHectares.takeIf { uiState.canContinue },
-            onUndo = onUndo,
-        )
-    }
-    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    ButtonPair {
         BigActionButton(
             text = stringResource(R.string.fields_pick_parcels),
             icon = Icons.Filled.GridOn,
@@ -257,6 +258,43 @@ private fun DrawPanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onPickPar
         NextButton(onClick = onNext, enabled = uiState.canContinue, modifier = Modifier.weight(1f).fillMaxHeight())
     }
 }
+
+/**
+ * Jedno miejsce na komunikat o stałej minimalnej wysokości. Gdy komunikaty pojawiały się i znikały,
+ * panel zmieniał wysokość, a mapa przesuwała się pod palcem – przy rysowaniu rogów to przeszkadza.
+ */
+@Composable
+private fun MessageSlot(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().heightIn(min = MessageSlotMinHeight),
+        contentAlignment = Alignment.CenterStart,
+    ) { content() }
+}
+
+/** Dwa przyciski obok siebie, zawsze równej wysokości (nawet gdy jeden podpis ma dwie linie). */
+@Composable
+private fun ButtonPair(content: @Composable RowScope.() -> Unit) {
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp), content = content)
+}
+
+private val MessageSlotMinHeight = 80.dp
+
+@Composable
+private fun ProblemPill(problem: LookupProblem) {
+    StatusPill(
+        text = problemText(problem),
+        icon = if (problem == LookupProblem.UNAVAILABLE) Icons.Filled.CloudOff else Icons.Filled.Info,
+        tone = Tone.Warning,
+    )
+}
+
+@Composable
+private fun problemText(problem: LookupProblem): String = stringResource(
+    when (problem) {
+        LookupProblem.NOT_FOUND -> R.string.fields_not_found
+        LookupProblem.UNAVAILABLE -> R.string.fields_unavailable
+    },
+)
 
 @Composable
 private fun NextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
@@ -270,9 +308,16 @@ private fun NextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabl
     )
 }
 
-/** „2 działki · ok. 12,40 ha" albo „4 rogi · ok. 3,10 ha" + „Cofnij" ostatniego kroku. */
+/** Druga linia podsumowania: powierzchnia, uwaga albo ostrzeżenie. */
+private sealed interface SummaryDetail {
+    data class Area(val hectares: Double) : SummaryDetail
+    data class Note(val text: String) : SummaryDetail
+    data class Warning(val text: String) : SummaryDetail
+}
+
+/** „2 działki / ok. 12,40 ha" albo „4 rogi / ok. 3,10 ha" + „Cofnij" ostatniego kroku. */
 @Composable
-private fun ShapeSummary(title: String, areaHectares: Double?, onUndo: () -> Unit) {
+private fun ShapeSummary(title: String, detail: SummaryDetail, onUndo: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -287,11 +332,18 @@ private fun ShapeSummary(title: String, areaHectares: Double?, onUndo: () -> Uni
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
-                if (areaHectares != null) {
-                    Text(
-                        text = stringResource(R.string.fields_area, formatHectares(areaHectares)),
+                when (detail) {
+                    is SummaryDetail.Area -> Text(
+                        text = stringResource(R.string.fields_area, formatHectares(detail.hectares)),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
+                    )
+                    is SummaryDetail.Note -> Text(text = detail.text, style = MaterialTheme.typography.bodyMedium)
+                    is SummaryDetail.Warning -> Text(
+                        text = detail.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
@@ -404,8 +456,8 @@ internal fun FieldDetailsStep(
 
 @Composable
 private fun shapeSummaryText(uiState: FieldEditorUiState): String = when (uiState.shapeMode) {
-    ShapeMode.PARCELS -> pluralStringResource(R.plurals.fields_selected_parcels, uiState.parcels.size, uiState.parcels.size)
-    ShapeMode.DRAW -> pluralStringResource(R.plurals.fields_corners, uiState.drawnPoints.size, uiState.drawnPoints.size)
+    ShapeMode.PARCELS -> parcelsCount(uiState.parcels.size)
+    ShapeMode.DRAW -> cornersCount(uiState.drawnPoints.size)
 }
 
 private val PreviewParcel = Parcel(
@@ -480,3 +532,19 @@ private fun FieldDetailsPreview() {
         )
     }
 }
+
+@Composable
+private fun parcelsCount(count: Int): String = pluralStringPl(
+    R.string.fields_parcels_one,
+    R.string.fields_parcels_few,
+    R.string.fields_parcels_many,
+    count,
+)
+
+@Composable
+private fun cornersCount(count: Int): String = pluralStringPl(
+    R.string.fields_corners_one,
+    R.string.fields_corners_few,
+    R.string.fields_corners_many,
+    count,
+)

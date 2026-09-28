@@ -13,25 +13,20 @@
     <string name="fields_searching">Szukam działki…</string>
     <string name="fields_not_found">Tu nie ma działki</string>
     <string name="fields_unavailable">Brak zasięgu – dotknij działkę jeszcze raz</string>
-    <plurals name="fields_selected_parcels">
-        <item quantity="one">%1$d działka</item>
-        <item quantity="few">%1$d działki</item>
-        <item quantity="many">%1$d działek</item>
-        <item quantity="other">%1$d działki</item>
-    </plurals>
+    <string name="fields_parcels_one">%1$d działka</string>
+    <string name="fields_parcels_few">%1$d działki</string>
+    <string name="fields_parcels_many">%1$d działek</string>
     <string name="fields_undo">Cofnij</string>
     <string name="fields_next">Dalej</string>
     <string name="fields_search_by_number">Numer działki</string>
     <string name="fields_search_short">Szukaj</string>
     <string name="fields_draw">Narysuj ręcznie</string>
     <string name="fields_draw_hint">Dotykaj po kolei rogów pola (co najmniej 3)</string>
+    <string name="fields_draw_more">Potrzeba co najmniej 3</string>
     <string name="fields_pick_parcels">Wybierz działki</string>
-    <plurals name="fields_corners">
-        <item quantity="one">%1$d róg</item>
-        <item quantity="few">%1$d rogi</item>
-        <item quantity="many">%1$d rogów</item>
-        <item quantity="other">%1$d rogu</item>
-    </plurals>
+    <string name="fields_corners_one">%1$d róg</string>
+    <string name="fields_corners_few">%1$d rogi</string>
+    <string name="fields_corners_many">%1$d rogów</string>
 
     <!-- Szukanie działki po numerze -->
     <string name="fields_search_title">Szukaj działki</string>

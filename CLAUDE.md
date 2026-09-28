@@ -21,7 +21,8 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
 - Nazwa: FarmTracker, `applicationId = pl.farmtracker.app`, pakiety `pl.farmtracker.*`.
 
 ## Konwencje
-- Wszystkie teksty UI w `strings.xml` (PL).
+- Wszystkie teksty UI w `strings.xml` (PL). Liczebniki przez `pluralStringPl` (core-ui), nie `plurals` –
+  Android dobiera formę `plurals` wg języka telefonu („4 rogu" na telefonie po angielsku).
 - Moduły: `app`, `core-domain` (JVM), `core-ui` (motyw + komponenty), `core-map` (MapLibre: `MapScaffold`,
   `MapChromeController`, warstwy), `core-testing` (fake'i, reguły testowe),
   `data`, `feature-*`. Konfiguracja buildów w pluginach konwencji `build-logic/` (`farmtracker.android.library`,
