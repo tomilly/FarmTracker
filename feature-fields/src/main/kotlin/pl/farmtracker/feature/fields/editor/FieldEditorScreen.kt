@@ -2,6 +2,7 @@ package pl.farmtracker.feature.fields.editor
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -83,7 +84,23 @@ fun FieldEditorScreen(
             // Przy wyznaczaniu pola granice działek są zawsze potrzebne – przycisk tylko zabierałby miejsce mapie.
             showParcelsToggle = false,
         ) {
-            ShapePanel(uiState = uiState, onUndo = viewModel::removeLastParcel, onNext = viewModel::goToDetails)
+            ShapePanel(
+                uiState = uiState,
+                onUndo = viewModel::removeLastParcel,
+                onSearch = viewModel::openSearch,
+                onNext = viewModel::goToDetails,
+            )
+        }
+        EditorStep.SEARCH -> {
+            BackHandler(onBack = viewModel::closeSearch)
+            FieldSearchStep(
+                uiState = uiState,
+                onBack = viewModel::closeSearch,
+                onQueryChanged = viewModel::onSearchQueryChanged,
+                onSearch = viewModel::runSearch,
+                onPick = viewModel::pickSearchResult,
+                modifier = modifier,
+            )
         }
         EditorStep.DETAILS -> {
             // „Wstecz" z formularza wraca do mapy z wybranymi działkami, a nie wyrzuca z tworzenia pola.
@@ -101,7 +118,7 @@ fun FieldEditorScreen(
 }
 
 @Composable
-internal fun ShapePanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onNext: () -> Unit) {
+internal fun ShapePanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onSearch: () -> Unit, onNext: () -> Unit) {
     when {
         uiState.pendingLookups > 0 -> StatusPill(
             text = stringResource(R.string.fields_searching),
@@ -122,14 +139,32 @@ internal fun ShapePanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onNext:
             icon = Icons.Filled.TouchApp,
         )
     }
-    if (uiState.parcels.isNotEmpty()) {
-        SelectionSummary(uiState = uiState, onUndo = onUndo)
+    if (uiState.parcels.isEmpty()) {
         BigActionButton(
-            text = stringResource(R.string.fields_next),
-            icon = Icons.AutoMirrored.Filled.ArrowForward,
-            onClick = onNext,
-            tone = Tone.Go,
+            text = stringResource(R.string.fields_search_by_number),
+            icon = Icons.Filled.Search,
+            onClick = onSearch,
+            tone = Tone.Neutral,
         )
+    } else {
+        SelectionSummary(uiState = uiState, onUndo = onUndo)
+        // Obok „Dalej" nadal można dołożyć działkę po numerze.
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BigActionButton(
+                text = stringResource(R.string.fields_search_short),
+                icon = Icons.Filled.Search,
+                onClick = onSearch,
+                tone = Tone.Neutral,
+                modifier = Modifier.weight(1f),
+            )
+            BigActionButton(
+                text = stringResource(R.string.fields_next),
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                onClick = onNext,
+                tone = Tone.Go,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -235,7 +270,12 @@ private fun ShapePanelPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         Surface {
             Column(Modifier.padding(16.dp)) {
-                ShapePanel(uiState = FieldEditorUiState(parcels = listOf(PreviewParcel)), onUndo = {}, onNext = {})
+                ShapePanel(
+                    uiState = FieldEditorUiState(parcels = listOf(PreviewParcel)),
+                    onUndo = {},
+                    onSearch = {},
+                    onNext = {},
+                )
             }
         }
     }

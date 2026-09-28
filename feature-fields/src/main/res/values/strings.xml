@@ -21,6 +21,21 @@
     </plurals>
     <string name="fields_undo">Cofnij</string>
     <string name="fields_next">Dalej</string>
+    <string name="fields_search_by_number">Szukaj po numerze</string>
+    <string name="fields_search_short">Szukaj</string>
+
+    <!-- Szukanie działki po numerze -->
+    <string name="fields_search_title">Szukaj działki</string>
+    <string name="fields_search_label">Wieś (obręb) i numer działki</string>
+    <string name="fields_search_hint">np. Otusz 125</string>
+    <string name="fields_search_button">Szukaj</string>
+    <string name="fields_search_not_found">Nie znaleziono. Sprawdź nazwę wsi i numer działki.</string>
+    <string name="fields_search_pick">Wybierz działkę:</string>
+    <string name="fields_search_result_title">Działka %1$s · %2$s</string>
+    <string name="fields_search_result_place">gm. %1$s, %2$s</string>
+    <string name="fields_search_distance">ok. %1$s km stąd</string>
+
+    <!-- Nazwa i kolor -->
     <string name="fields_name_label">Nazwa pola</string>
     <string name="fields_name_hint">np. Za lasem</string>
     <string name="fields_color_label">Kolor na mapie</string>

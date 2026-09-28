@@ -35,7 +35,7 @@ class MapViewModelTest {
 
     private fun showParcelsZoomedIn() {
         viewModel.chrome.toggleParcels()
-        viewModel.chrome.onZoomChanged(15.0)
+        viewModel.chrome.onCameraIdle(15.0)
     }
 
     @Test
@@ -83,11 +83,11 @@ class MapViewModelTest {
 
     @Test
     fun `taps are ignored when parcel boundaries are not visible`() {
-        viewModel.chrome.onZoomChanged(15.0)
+        viewModel.chrome.onCameraIdle(15.0)
         viewModel.onMapTapped(tapPoint) // działki wyłączone
 
         viewModel.chrome.toggleParcels()
-        viewModel.chrome.onZoomChanged(10.0)
+        viewModel.chrome.onCameraIdle(10.0)
         viewModel.onMapTapped(tapPoint) // za daleko
 
         assertTrue(parcels.requests.isEmpty())

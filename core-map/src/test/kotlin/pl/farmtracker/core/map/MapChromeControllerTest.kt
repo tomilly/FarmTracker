@@ -2,8 +2,12 @@ package pl.farmtracker.core.map
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pl.farmtracker.core.domain.geo.GeoBounds
+import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.domain.geo.GeoPolygon
 
 class MapChromeControllerTest {
 
@@ -22,7 +26,7 @@ class MapChromeControllerTest {
         chrome.onStart(hasLocationPermission = true)
 
         assertEquals(LocationAccess.GRANTED, state.locationAccess)
-        assertEquals(1, state.centerOnMeRequest)
+        assertEquals(CameraRequest.CenterOnMe(1), state.cameraRequest)
         assertFalse(state.askForLocation)
     }
 
@@ -45,7 +49,7 @@ class MapChromeControllerTest {
         chrome.onLocationPermissionResult(granted = true)
 
         assertEquals(LocationAccess.GRANTED, state.locationAccess)
-        assertEquals(1, state.centerOnMeRequest)
+        assertEquals(CameraRequest.CenterOnMe(1), state.cameraRequest)
     }
 
     @Test
@@ -56,7 +60,7 @@ class MapChromeControllerTest {
         chrome.onWhereAmIClicked()
 
         assertTrue(state.askForLocation)
-        assertEquals(0, state.centerOnMeRequest)
+        assertNull(state.cameraRequest)
     }
 
     @Test
@@ -66,7 +70,7 @@ class MapChromeControllerTest {
         chrome.onWhereAmIClicked()
         chrome.onWhereAmIClicked()
 
-        assertEquals(3, state.centerOnMeRequest)
+        assertEquals(CameraRequest.CenterOnMe(3), state.cameraRequest)
     }
 
     @Test
@@ -87,15 +91,40 @@ class MapChromeControllerTest {
 
     @Test
     fun `parcels are visible from a whole-field zoom, with a hint below it`() {
-        chrome.onZoomChanged(12.0)
+        chrome.onCameraIdle(12.0)
         assertFalse(state.showParcelsZoomHint)
 
         chrome.toggleParcels()
         assertTrue(state.showParcelsZoomHint)
         assertFalse(state.parcelsVisible)
 
-        chrome.onZoomChanged(MapSources.PARCELS_MIN_ZOOM)
+        chrome.onCameraIdle(MapSources.PARCELS_MIN_ZOOM)
         assertFalse(state.showParcelsZoomHint)
         assertTrue(state.parcelsVisible)
+    }
+
+    @Test
+    fun `showing an area is the newest camera request until where-am-i`() {
+        chrome.onStart(hasLocationPermission = true)
+
+        chrome.showArea(listOf(GeoPolygon(listOf(GeoPoint(50.0, 17.0), GeoPoint(50.01, 17.02)))))
+
+        assertEquals(
+            CameraRequest.ShowArea(2, GeoBounds(south = 50.0, west = 17.0, north = 50.01, east = 17.02)),
+            state.cameraRequest,
+        )
+
+        chrome.onWhereAmIClicked()
+
+        assertEquals(CameraRequest.CenterOnMe(3), state.cameraRequest)
+    }
+
+    @Test
+    fun `camera idle remembers zoom and center`() {
+        chrome.onCameraIdle(14.0, GeoPoint(50.98, 17.42))
+        chrome.onCameraIdle(15.0)
+
+        assertEquals(15.0, state.zoom, 0.0)
+        assertEquals(GeoPoint(50.98, 17.42), state.center)
     }
 }

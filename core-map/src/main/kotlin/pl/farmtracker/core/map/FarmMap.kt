@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -22,7 +24,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
@@ -65,6 +69,8 @@ import java.util.Locale
 private val PolandCenter = LatLng(52.07, 19.48)
 private const val MY_LOCATION_ZOOM = 16.0
 private const val MY_LOCATION_TRANSITION_MS = 750L
+private val SHOW_AREA_PADDING = 48.dp
+private const val SHOW_AREA_DURATION_MS = 800
 
 // Żółty jak zaznaczenie markerem – dobrze widoczny i na mapie, i na zdjęciu lotniczym.
 private const val SELECTION_FILL_COLOR = "#FFD600"
@@ -90,22 +96,23 @@ private const val FIELD_LABEL_HALO = 1.5f
 internal fun FarmMap(
     chrome: MapChromeState,
     overlays: MapOverlays,
-    onZoomChanged: (Double) -> Unit,
+    onCameraIdle: (zoom: Double, center: GeoPoint) -> Unit,
     onMapTap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val baseLayer = chrome.baseLayer
     val showParcels = chrome.showParcels
     val locationEnabled = chrome.locationAccess == LocationAccess.GRANTED
-    val centerOnMeRequest = chrome.centerOnMeRequest
+    val cameraRequest = chrome.cameraRequest
     val context = LocalContext.current
+    val areaPaddingPx = with(LocalDensity.current) { SHOW_AREA_PADDING.roundToPx() }
     val mapView = remember {
         MapLibre.getInstance(context)
         MapView(context).apply { onCreate(null) }
     }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
-    val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
+    val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnMapTap by rememberUpdatedState(onMapTap)
 
     MapViewLifecycle(mapView)
@@ -121,7 +128,11 @@ internal fun FarmMap(
             // Zawsze północ u góry i widok z góry – obrócona/pochylona mapa dezorientuje (BRIEF §4).
             mapLibreMap.uiSettings.isRotateGesturesEnabled = false
             mapLibreMap.uiSettings.isTiltGesturesEnabled = false
-            mapLibreMap.addOnCameraIdleListener { currentOnZoomChanged(mapLibreMap.cameraPosition.zoom) }
+            mapLibreMap.addOnCameraIdleListener {
+                val position = mapLibreMap.cameraPosition
+                val target = position.target ?: return@addOnCameraIdleListener
+                currentOnCameraIdle(position.zoom, GeoPoint(latitude = target.latitude, longitude = target.longitude))
+            }
             mapLibreMap.addOnMapClickListener { latLng ->
                 currentOnMapTap(GeoPoint(latitude = latLng.latitude, longitude = latLng.longitude))
                 true
@@ -152,21 +163,38 @@ internal fun FarmMap(
             ?.setGeoJson(overlays.highlight.toFeatureCollection())
     }
 
-    LaunchedEffect(map, style, locationEnabled, centerOnMeRequest) {
+    LaunchedEffect(map, style, locationEnabled, cameraRequest) {
         val mapLibreMap = map ?: return@LaunchedEffect
         val loadedStyle = style ?: return@LaunchedEffect
-        if (!locationEnabled || !mapLibreMap.showMyLocation(context, loadedStyle)) return@LaunchedEffect
-        if (centerOnMeRequest > 0) {
-            // Śledzenie przesuwa mapę do pozycji (także gdy GPS dopiero ją ustali); przesunięcie palcem je wyłącza.
-            // Zoom podajemy razem z trybem – osobne zoomWhileTracking() jest ignorowane, zanim warstwa pozycji się pokaże.
-            mapLibreMap.locationComponent.setCameraMode(
-                CameraMode.TRACKING,
-                MY_LOCATION_TRANSITION_MS,
-                MY_LOCATION_ZOOM,
-                null,
-                null,
-                null,
-            )
+        val showsMe = locationEnabled && mapLibreMap.showMyLocation(context, loadedStyle)
+        when (cameraRequest) {
+            is CameraRequest.CenterOnMe -> if (showsMe) {
+                // Śledzenie przesuwa mapę do pozycji (także gdy GPS dopiero ją ustali); przesunięcie palcem je wyłącza.
+                // Zoom podajemy razem z trybem – osobne zoomWhileTracking() jest ignorowane, zanim warstwa pozycji się pokaże.
+                mapLibreMap.locationComponent.setCameraMode(
+                    CameraMode.TRACKING,
+                    MY_LOCATION_TRANSITION_MS,
+                    MY_LOCATION_ZOOM,
+                    null,
+                    null,
+                    null,
+                )
+            }
+            is CameraRequest.ShowArea -> {
+                // Bez tego śledzenie pozycji od razu przeciągnęłoby mapę z powrotem do użytkownika.
+                if (mapLibreMap.locationComponent.isLocationComponentActivated) {
+                    mapLibreMap.locationComponent.cameraMode = CameraMode.NONE
+                }
+                val bounds = cameraRequest.bounds
+                mapLibreMap.easeCamera(
+                    CameraUpdateFactory.newLatLngBounds(
+                        LatLngBounds.from(bounds.north, bounds.east, bounds.south, bounds.west),
+                        areaPaddingPx,
+                    ),
+                    SHOW_AREA_DURATION_MS,
+                )
+            }
+            null -> Unit
         }
     }
 }

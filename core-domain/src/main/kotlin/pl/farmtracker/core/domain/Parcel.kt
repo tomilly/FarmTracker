@@ -9,6 +9,7 @@ import pl.farmtracker.core.domain.geo.GeoPolygon
  * @param id pełny identyfikator, np. `302103_5.0007.125` (TERYT + obręb + numer)
  * @param number numer działki w obrębie, np. `125` albo `12/3`
  * @param precinct obręb ewidencyjny (zwykle nazwa wsi)
+ * @param county powiat – odróżnia wsie o tej samej nazwie w wynikach wyszukiwania
  */
 data class Parcel(
     val id: String,
@@ -16,6 +17,7 @@ data class Parcel(
     val precinct: String,
     val commune: String,
     val shape: List<GeoPolygon>,
+    val county: String = "",
 ) {
     val areaHectares: Double get() = GeoArea.hectares(shape)
 }

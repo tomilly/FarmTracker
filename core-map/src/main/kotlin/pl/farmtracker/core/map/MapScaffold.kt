@@ -105,7 +105,7 @@ fun MapScaffold(
                 FarmMap(
                     chrome = chromeState,
                     overlays = overlays,
-                    onZoomChanged = chrome::onZoomChanged,
+                    onCameraIdle = chrome::onCameraIdle,
                     onMapTap = onMapTap,
                     modifier = Modifier.fillMaxSize(),
                 )

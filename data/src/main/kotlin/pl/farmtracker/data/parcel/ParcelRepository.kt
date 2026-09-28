@@ -13,6 +13,16 @@ sealed interface ParcelLookup {
     data object Unavailable : ParcelLookup
 }
 
+sealed interface ParcelSearch {
+    /** Jedna lub więcej działek (ta sama nazwa wsi bywa w wielu gminach). */
+    data class Found(val parcels: List<Parcel>) : ParcelSearch
+    data object NotFound : ParcelSearch
+    data object Unavailable : ParcelSearch
+}
+
 interface ParcelRepository {
     suspend fun parcelAt(point: GeoPoint): ParcelLookup
+
+    /** Szukanie po obrębie i numerze („Otusz 125") albo po pełnym identyfikatorze działki. */
+    suspend fun search(query: String): ParcelSearch
 }

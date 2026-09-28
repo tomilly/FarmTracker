@@ -13,10 +13,12 @@ import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.parcel.ParcelLookup
+import pl.farmtracker.data.parcel.ParcelSearch
 
 class FieldEditorViewModelTest {
 
@@ -27,7 +29,7 @@ class FieldEditorViewModelTest {
     private val fields = FakeFieldRepository()
 
     // Leniwie: ViewModel musi powstać po podmianie Dispatchers.Main przez regułę.
-    private val viewModel by lazy { FieldEditorViewModel(parcels, fields).also { it.chrome.onZoomChanged(16.0) } }
+    private val viewModel by lazy { FieldEditorViewModel(parcels, fields).also { it.chrome.onCameraIdle(16.0) } }
     private val state get() = viewModel.uiState.value
 
     private fun square(lat: Double, lon: Double) =
@@ -106,7 +108,7 @@ class FieldEditorViewModelTest {
 
     @Test
     fun `taps are ignored when parcels are too small to see`() {
-        viewModel.chrome.onZoomChanged(10.0)
+        viewModel.chrome.onCameraIdle(10.0)
 
         viewModel.onMapTapped(inNorth)
 
@@ -166,5 +168,51 @@ class FieldEditorViewModelTest {
         assertEquals(FieldColor.PURPLE, saved.color)
         assertEquals(listOf("id-north", "id-south"), saved.parcelIds)
         assertEquals(north.shape + south.shape, saved.shape)
+    }
+
+    @Test
+    fun `search results are sorted from the nearest to the map center`() {
+        val far = south.copy(id = "far", shape = listOf(square(54.0, 18.0)))
+        parcels.searchResult = ParcelSearch.Found(listOf(far, north))
+        viewModel.chrome.onCameraIdle(15.0, GeoPoint(50.0, 17.0))
+        viewModel.openSearch()
+        viewModel.onSearchQueryChanged(" Bystrzyca 12 ")
+
+        viewModel.runSearch()
+
+        assertEquals(listOf(" Bystrzyca 12 ".trim()), parcels.searches)
+        val hits = (state.search as SearchState.Results).hits
+        assertEquals(listOf("id-north", "far"), hits.map { it.parcel.id })
+        assertTrue(hits.first().distanceKm!! < 3.0)
+    }
+
+    @Test
+    fun `picking a result adds the parcel, goes back to the map and shows it`() {
+        parcels.searchResult = ParcelSearch.Found(listOf(north))
+        viewModel.openSearch()
+        viewModel.onSearchQueryChanged("Bystrzyca 12")
+        viewModel.runSearch()
+
+        viewModel.pickSearchResult(north)
+
+        assertEquals(EditorStep.SHAPE, state.step)
+        assertEquals(listOf(north), state.parcels)
+        assertTrue(viewModel.chrome.state.value.cameraRequest is CameraRequest.ShowArea)
+    }
+
+    @Test
+    fun `search problems are reported and blank query is not sent`() {
+        viewModel.openSearch()
+        viewModel.runSearch()
+        assertTrue(parcels.searches.isEmpty())
+
+        viewModel.onSearchQueryChanged("Nie ma 1")
+        parcels.searchResult = ParcelSearch.NotFound
+        viewModel.runSearch()
+        assertEquals(SearchState.NotFound, state.search)
+
+        parcels.searchResult = ParcelSearch.Unavailable
+        viewModel.runSearch()
+        assertEquals(SearchState.Unavailable, state.search)
     }
 }
