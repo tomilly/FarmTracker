@@ -42,7 +42,10 @@ granice działek KIEG (WMS w 3× rozdzielczości, od zoomu 13,5; na zdjęciu bia
 zaznaczanie działki dotknięciem (ULDK GetParcelByXY → nakładka + numer, obręb, ha).
 Adresy usług: `feature-map/.../MapSources.kt`, ULDK: `data/.../parcel/UldkParcelRepository.kt`.
 Geometria (WKT, powierzchnia) w `core-domain/.../geo`.
-Następny: M2 – pola (rysowanie, ULDK). Kamienie milowe: docs/BRIEF.md §9.
+M2 w toku (`feature-fields`, zapis lokalny w DataStore JSON – `data/.../field`): lista pól (admin → „Pola"),
+nowe pole z dotkniętych działek (ULDK) → nazwa + kolor → zapis; pola widoczne na mapie każdej roli.
+Zostało: rysowanie pola po rogach, szukanie działki po numerze, punkt wjazdu, edycja/usuwanie z „Cofnij".
+Kamienie milowe: docs/BRIEF.md §9.
 
 ## Emulator (uwagi)
 - Obraz API 37 Google Play: GPS emulatora bywa „martwy" (0 pozycji) – zimny start (`-no-snapshot-load`)

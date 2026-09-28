@@ -17,6 +17,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import pl.farmtracker.app.BuildConfig
+import pl.farmtracker.feature.fields.editor.FieldEditorScreen
+import pl.farmtracker.feature.fields.list.FieldsListScreen
 import pl.farmtracker.feature.map.MapScreen
 import pl.farmtracker.feature.roles.admin.AdminScreen
 import pl.farmtracker.feature.roles.base.BaseScreen
@@ -52,8 +54,26 @@ private fun FarmTrackerNavHost(
         composable<HarvesterDestination> { HarvesterScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
         composable<DriverDestination> { DriverScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
         composable<BaseDestination> { BaseScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
-        composable<AdminDestination> { AdminScreen(onOpenFields = openMap, onSwitchRole = onSwitchRole) }
+        composable<AdminDestination> {
+            AdminScreen(
+                onOpenFields = { navController.navigate(FieldsListDestination) { launchSingleTop = true } },
+                onSwitchRole = onSwitchRole,
+            )
+        }
         composable<MapDestination> { MapScreen(onBack = { navController.popBackStack() }) }
+        composable<FieldsListDestination> {
+            FieldsListScreen(
+                onBack = { navController.popBackStack() },
+                onAddField = { navController.navigate(FieldEditorDestination) { launchSingleTop = true } },
+                onShowMap = openMap,
+            )
+        }
+        composable<FieldEditorDestination> {
+            FieldEditorScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
+        }
     }
 
     // Zmiana roli = nowy ekran startowy; czyścimy stos, żeby „wstecz" nie wracało do starej roli.

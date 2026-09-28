@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Lista pól -->
+    <string name="fields_title">Pola</string>
+    <string name="fields_add">Dodaj pole</string>
+    <string name="fields_empty">Nie ma jeszcze pól. Dodaj pierwsze.</string>
+    <string name="fields_show_on_map">Pokaż na mapie</string>
+    <string name="fields_area">ok. %1$s ha</string>
+
+    <!-- Nowe pole -->
+    <string name="fields_new_title">Nowe pole</string>
+    <string name="fields_tap_parcels_hint">Dotknij działki, które należą do tego pola</string>
+    <string name="fields_searching">Szukam działki…</string>
+    <string name="fields_not_found">Tu nie ma działki</string>
+    <string name="fields_unavailable">Brak zasięgu – dotknij działkę jeszcze raz</string>
+    <plurals name="fields_selected_parcels">
+        <item quantity="one">%1$d działka</item>
+        <item quantity="few">%1$d działki</item>
+        <item quantity="many">%1$d działek</item>
+        <item quantity="other">%1$d działki</item>
+    </plurals>
+    <string name="fields_undo">Cofnij</string>
+    <string name="fields_next">Dalej</string>
+    <string name="fields_name_label">Nazwa pola</string>
+    <string name="fields_name_hint">np. Za lasem</string>
+    <string name="fields_color_label">Kolor na mapie</string>
+    <string name="fields_save">Zapisz pole</string>
+</resources>

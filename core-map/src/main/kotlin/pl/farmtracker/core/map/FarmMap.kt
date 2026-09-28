@@ -79,7 +79,7 @@ private const val FIELD_LINE_WIDTH = 2.5f
 
 // Czcionka z mapy bazowej (OpenFreeMap); biały tekst z czarną obwódką czytelny i na mapie, i na zdjęciu.
 private const val FIELD_LABEL_FONT = "Noto Sans Bold"
-private const val FIELD_LABEL_SIZE = 15f
+private const val FIELD_LABEL_SIZE = 18f
 private const val FIELD_LABEL_HALO = 1.5f
 
 /**

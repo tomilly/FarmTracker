@@ -74,6 +74,7 @@ fun MapScaffold(
     onMapTap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
     overlays: MapOverlays = MapOverlays(),
+    showParcelsToggle: Boolean = true,
     panel: @Composable ColumnScope.() -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -118,6 +119,7 @@ fun MapScaffold(
                 onSelectBaseLayer = chrome::selectBaseLayer,
                 onToggleParcels = chrome::toggleParcels,
                 onOpenSettings = { context.openAppSettings() },
+                showParcelsToggle = showParcelsToggle,
                 panel = panel,
             )
         }
@@ -144,6 +146,7 @@ internal fun MapBottomPanel(
     onToggleParcels: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    showParcelsToggle: Boolean = true,
     panel: @Composable ColumnScope.() -> Unit = {},
 ) {
     Surface(modifier = modifier.fillMaxWidth(), shadowElevation = 8.dp) {
@@ -188,13 +191,15 @@ internal fun MapBottomPanel(
                     modifier = Modifier.weight(1f),
                 )
             }
-            BigActionButton(
-                text = stringResource(R.string.core_map_parcels),
-                icon = Icons.Filled.GridOn,
-                onClick = onToggleParcels,
-                tone = if (chrome.showParcels) Tone.Primary else Tone.Neutral,
-                selected = chrome.showParcels,
-            )
+            if (showParcelsToggle) {
+                BigActionButton(
+                    text = stringResource(R.string.core_map_parcels),
+                    icon = Icons.Filled.GridOn,
+                    onClick = onToggleParcels,
+                    tone = if (chrome.showParcels) Tone.Primary else Tone.Neutral,
+                    selected = chrome.showParcels,
+                )
+            }
         }
     }
 }
