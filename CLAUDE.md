@@ -22,7 +22,8 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
 
 ## Konwencje
 - Wszystkie teksty UI w `strings.xml` (PL).
-- Moduły: `app`, `core-domain` (JVM), `core-ui` (motyw + komponenty), `core-testing` (fake'i, reguły testowe),
+- Moduły: `app`, `core-domain` (JVM), `core-ui` (motyw + komponenty), `core-map` (MapLibre: `MapScaffold`,
+  `MapChromeController`, warstwy), `core-testing` (fake'i, reguły testowe),
   `data`, `feature-*`. Konfiguracja buildów w pluginach konwencji `build-logic/` (`farmtracker.android.library`,
   `farmtracker.android.compose`, `farmtracker.hilt`, `farmtracker.jvm.library`, …).
 - UI buduj z komponentów `core-ui`: `BigActionButton`, `RoleScaffold`/`FarmTrackerScaffold`, `StatusPill`, `Tone`.

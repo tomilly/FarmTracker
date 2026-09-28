@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="map_title">Mapa</string>
-    <string name="map_layer_map">Mapa</string>
-    <string name="map_layer_photo">Zdjęcie</string>
-    <string name="map_parcels">Działki</string>
-    <string name="map_where_am_i">Gdzie jestem</string>
-    <string name="map_parcels_zoom_hint">Przybliż mapę, aby zobaczyć działki</string>
-    <string name="map_location_denied">Bez zgody na lokalizację nie pokażę, gdzie jesteś.</string>
-    <string name="map_open_settings">Otwórz ustawienia</string>
     <string name="map_tap_parcel_hint">Dotknij działkę, aby ją zaznaczyć</string>
     <string name="map_parcel_searching">Szukam działki…</string>
     <string name="map_parcel_not_found">Tu nie ma działki</string>

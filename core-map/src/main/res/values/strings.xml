@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_map_layer_map">Mapa</string>
+    <string name="core_map_layer_photo">Zdjęcie</string>
+    <string name="core_map_parcels">Działki</string>
+    <string name="core_map_where_am_i">Gdzie jestem</string>
+    <string name="core_map_parcels_zoom_hint">Przybliż mapę, aby zobaczyć działki</string>
+    <string name="core_map_location_denied">Bez zgody na lokalizację nie pokażę, gdzie jesteś.</string>
+    <string name="core_map_open_settings">Otwórz ustawienia</string>
+</resources>

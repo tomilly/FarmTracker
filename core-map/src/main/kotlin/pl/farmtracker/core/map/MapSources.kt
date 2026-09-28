@@ -1,4 +1,4 @@
-package pl.farmtracker.feature.map
+package pl.farmtracker.core.map
 
 /**
  * Źródła mapy (BRIEF §7). Wszystkie w Web Mercator (EPSG:3857), który rysuje MapLibre.

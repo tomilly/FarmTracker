@@ -1,4 +1,4 @@
-package pl.farmtracker.feature.map
+package pl.farmtracker.core.map
 
 import android.Manifest
 import android.content.Context
@@ -48,8 +48,8 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.MultiPolygon
 import org.maplibre.geojson.Point
-import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.domain.geo.GeoPolygon
 
 private val PolandCenter = LatLng(52.07, 19.48)
 private const val MY_LOCATION_ZOOM = 16.0
@@ -67,15 +67,16 @@ private const val SELECTION_LINE_WIDTH = 3f
  */
 @Composable
 internal fun FarmMap(
-    baseLayer: BaseLayer,
-    showParcels: Boolean,
-    locationEnabled: Boolean,
-    centerOnMeRequest: Int,
-    selectedParcel: Parcel?,
+    chrome: MapChromeState,
+    overlays: MapOverlays,
     onZoomChanged: (Double) -> Unit,
     onMapTap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val baseLayer = chrome.baseLayer
+    val showParcels = chrome.showParcels
+    val locationEnabled = chrome.locationAccess == LocationAccess.GRANTED
+    val centerOnMeRequest = chrome.centerOnMeRequest
     val context = LocalContext.current
     val mapView = remember {
         MapLibre.getInstance(context)
@@ -94,7 +95,7 @@ internal fun FarmMap(
         mapView.getMapAsync { mapLibreMap ->
             mapLibreMap.cameraPosition = CameraPosition.Builder()
                 .target(PolandCenter)
-                .zoom(MapUiState.INITIAL_ZOOM)
+                .zoom(MapChromeState.INITIAL_ZOOM)
                 .build()
             // Zawsze północ u góry i widok z góry – obrócona/pochylona mapa dezorientuje (BRIEF §4).
             mapLibreMap.uiSettings.isRotateGesturesEnabled = false
@@ -117,9 +118,9 @@ internal fun FarmMap(
         style?.applyVisibility(baseLayer, showParcels)
     }
 
-    LaunchedEffect(style, selectedParcel) {
+    LaunchedEffect(style, overlays.highlight) {
         style?.getSourceAs<GeoJsonSource>(MapSources.SELECTION_SOURCE_ID)
-            ?.setGeoJson(selectedParcel.toFeatureCollection())
+            ?.setGeoJson(overlays.highlight.toFeatureCollection())
     }
 
     LaunchedEffect(map, style, locationEnabled, centerOnMeRequest) {
@@ -212,9 +213,9 @@ private fun Style.addFarmLayers() {
     addLayerAbove(selectionLine, MapSources.SELECTION_FILL_LAYER_ID)
 }
 
-private fun Parcel?.toFeatureCollection(): FeatureCollection {
-    if (this == null) return FeatureCollection.fromFeatures(emptyList<Feature>())
-    val polygons = shape.map { polygon ->
+private fun List<GeoPolygon>.toFeatureCollection(): FeatureCollection {
+    if (isEmpty()) return FeatureCollection.fromFeatures(emptyList<Feature>())
+    val polygons = map { polygon ->
         (listOf(polygon.outer) + polygon.holes).map { ring ->
             ring.map { Point.fromLngLat(it.longitude, it.latitude) }
         }

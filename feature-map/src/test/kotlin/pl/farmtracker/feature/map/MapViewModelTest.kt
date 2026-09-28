@@ -2,7 +2,6 @@ package pl.farmtracker.feature.map
 
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -20,8 +19,9 @@ class MapViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val parcels = FakeParcelRepository()
-    private val viewModel = MapViewModel(parcels)
-    private val state get() = viewModel.uiState.value
+    // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
+    private val viewModel by lazy { MapViewModel(parcels) }
+    private val selection get() = viewModel.parcelSelection.value
 
     private val tapPoint = GeoPoint(latitude = 50.98, longitude = 17.42)
     private val parcel = Parcel(
@@ -33,98 +33,13 @@ class MapViewModelTest {
     )
 
     private fun showParcelsZoomedIn() {
-        viewModel.toggleParcels()
-        viewModel.onZoomChanged(15.0)
+        viewModel.chrome.toggleParcels()
+        viewModel.chrome.onZoomChanged(15.0)
     }
 
     @Test
-    fun `starts on street map without parcels`() {
-        assertEquals(BaseLayer.MAP, state.baseLayer)
-        assertFalse(state.showParcels)
-        assertEquals(LocationAccess.UNKNOWN, state.locationAccess)
-        assertEquals(ParcelSelection.None, state.parcelSelection)
-    }
-
-    @Test
-    fun `with permission the map centers on me right away`() {
-        viewModel.onStart(hasLocationPermission = true)
-
-        assertEquals(LocationAccess.GRANTED, state.locationAccess)
-        assertEquals(1, state.centerOnMeRequest)
-        assertFalse(state.askForLocation)
-    }
-
-    @Test
-    fun `without permission the map asks once`() {
-        viewModel.onStart(hasLocationPermission = false)
-        assertTrue(state.askForLocation)
-
-        viewModel.onLocationPermissionAsked()
-        viewModel.onStart(hasLocationPermission = false) // np. obrót ekranu
-
-        assertFalse(state.askForLocation)
-    }
-
-    @Test
-    fun `granting permission centers on me`() {
-        viewModel.onStart(hasLocationPermission = false)
-        viewModel.onLocationPermissionAsked()
-
-        viewModel.onLocationPermissionResult(granted = true)
-
-        assertEquals(LocationAccess.GRANTED, state.locationAccess)
-        assertEquals(1, state.centerOnMeRequest)
-    }
-
-    @Test
-    fun `denying permission shows denied state and where-am-i asks again`() {
-        viewModel.onLocationPermissionResult(granted = false)
-        assertEquals(LocationAccess.DENIED, state.locationAccess)
-
-        viewModel.onWhereAmIClicked()
-
-        assertTrue(state.askForLocation)
-        assertEquals(0, state.centerOnMeRequest)
-    }
-
-    @Test
-    fun `where-am-i with permission requests centering each time`() {
-        viewModel.onStart(hasLocationPermission = true)
-
-        viewModel.onWhereAmIClicked()
-        viewModel.onWhereAmIClicked()
-
-        assertEquals(3, state.centerOnMeRequest)
-    }
-
-    @Test
-    fun `permission granted in system settings is picked up on return`() {
-        viewModel.onLocationPermissionResult(granted = false)
-
-        viewModel.onLocationPermissionRechecked(granted = true)
-
-        assertEquals(LocationAccess.GRANTED, state.locationAccess)
-    }
-
-    @Test
-    fun `switching base layer`() {
-        viewModel.selectBaseLayer(BaseLayer.PHOTO)
-
-        assertEquals(BaseLayer.PHOTO, state.baseLayer)
-    }
-
-    @Test
-    fun `parcels are visible from a whole-field zoom, with a hint below it`() {
-        viewModel.onZoomChanged(12.0)
-        assertFalse(state.showParcelsZoomHint)
-
-        viewModel.toggleParcels()
-        assertTrue(state.showParcelsZoomHint)
-        assertFalse(state.parcelsVisible)
-
-        viewModel.onZoomChanged(MapSources.PARCELS_MIN_ZOOM)
-        assertFalse(state.showParcelsZoomHint)
-        assertTrue(state.parcelsVisible)
+    fun `nothing is selected at start`() {
+        assertEquals(ParcelSelection.None, selection)
     }
 
     @Test
@@ -135,7 +50,7 @@ class MapViewModelTest {
         viewModel.onMapTapped(tapPoint)
 
         assertEquals(listOf(tapPoint), parcels.requests)
-        assertEquals(parcel, state.selectedParcel)
+        assertEquals(parcel, selection.selectedParcel)
     }
 
     @Test
@@ -146,10 +61,10 @@ class MapViewModelTest {
         showParcelsZoomedIn()
 
         viewModel.onMapTapped(tapPoint)
-        assertEquals(ParcelSelection.Searching, state.parcelSelection)
+        assertEquals(ParcelSelection.Searching, selection)
 
         gate.complete(Unit)
-        assertEquals(ParcelSelection.Selected(parcel), state.parcelSelection)
+        assertEquals(ParcelSelection.Selected(parcel), selection)
     }
 
     @Test
@@ -158,24 +73,24 @@ class MapViewModelTest {
 
         parcels.result = ParcelLookup.NotFound
         viewModel.onMapTapped(tapPoint)
-        assertEquals(ParcelSelection.NotFound, state.parcelSelection)
+        assertEquals(ParcelSelection.NotFound, selection)
 
         parcels.result = ParcelLookup.Unavailable
         viewModel.onMapTapped(tapPoint)
-        assertEquals(ParcelSelection.Unavailable, state.parcelSelection)
+        assertEquals(ParcelSelection.Unavailable, selection)
     }
 
     @Test
     fun `taps are ignored when parcel boundaries are not visible`() {
-        viewModel.onZoomChanged(15.0)
+        viewModel.chrome.onZoomChanged(15.0)
         viewModel.onMapTapped(tapPoint) // działki wyłączone
 
-        viewModel.toggleParcels()
-        viewModel.onZoomChanged(10.0)
+        viewModel.chrome.toggleParcels()
+        viewModel.chrome.onZoomChanged(10.0)
         viewModel.onMapTapped(tapPoint) // za daleko
 
         assertTrue(parcels.requests.isEmpty())
-        assertEquals(ParcelSelection.None, state.parcelSelection)
+        assertEquals(ParcelSelection.None, selection)
     }
 
     @Test
@@ -185,11 +100,10 @@ class MapViewModelTest {
         viewModel.onMapTapped(tapPoint)
 
         viewModel.clearParcelSelection()
-        assertNull(state.selectedParcel)
+        assertNull(selection.selectedParcel)
 
         viewModel.onMapTapped(tapPoint)
-        viewModel.toggleParcels()
-        assertNull(state.selectedParcel)
-        assertFalse(state.showParcels)
+        viewModel.chrome.toggleParcels()
+        assertNull(selection.selectedParcel)
     }
 }
