@@ -27,18 +27,39 @@ import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.PropertyFactory.fillColor
+import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
+import org.maplibre.android.style.layers.PropertyFactory.lineColor
+import org.maplibre.android.style.layers.PropertyFactory.lineWidth
+import org.maplibre.android.style.layers.PropertyFactory.rasterBrightnessMin
+import org.maplibre.android.style.layers.PropertyFactory.rasterSaturation
 import org.maplibre.android.style.layers.PropertyFactory.textField
 import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.android.style.sources.RasterSource
 import org.maplibre.android.style.sources.TileSet
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.MultiPolygon
+import org.maplibre.geojson.Point
+import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.geo.GeoPoint
 
 private val PolandCenter = LatLng(52.07, 19.48)
 private const val MY_LOCATION_ZOOM = 16.0
 private const val MY_LOCATION_TRANSITION_MS = 750L
+
+// Żółty jak zaznaczenie markerem – dobrze widoczny i na mapie, i na zdjęciu lotniczym.
+private const val SELECTION_FILL_COLOR = "#FFD600"
+private const val SELECTION_FILL_OPACITY = 0.35f
+private const val SELECTION_LINE_COLOR = "#FF6F00"
+private const val SELECTION_LINE_WIDTH = 3f
 
 /**
  * Mapa MapLibre w Compose. Stan (warstwy, prośby o wyśrodkowanie) przychodzi z góry;
@@ -50,7 +71,9 @@ internal fun FarmMap(
     showParcels: Boolean,
     locationEnabled: Boolean,
     centerOnMeRequest: Int,
+    selectedParcel: Parcel?,
     onZoomChanged: (Double) -> Unit,
+    onMapTap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -61,6 +84,7 @@ internal fun FarmMap(
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
     val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
+    val currentOnMapTap by rememberUpdatedState(onMapTap)
 
     MapViewLifecycle(mapView)
 
@@ -76,6 +100,10 @@ internal fun FarmMap(
             mapLibreMap.uiSettings.isRotateGesturesEnabled = false
             mapLibreMap.uiSettings.isTiltGesturesEnabled = false
             mapLibreMap.addOnCameraIdleListener { currentOnZoomChanged(mapLibreMap.cameraPosition.zoom) }
+            mapLibreMap.addOnMapClickListener { latLng ->
+                currentOnMapTap(GeoPoint(latitude = latLng.latitude, longitude = latLng.longitude))
+                true
+            }
             mapLibreMap.setStyle(Style.Builder().fromUri(MapSources.BASE_STYLE_URL)) { loaded ->
                 loaded.usePolishLabels()
                 loaded.addFarmLayers()
@@ -87,6 +115,11 @@ internal fun FarmMap(
 
     LaunchedEffect(style, baseLayer, showParcels) {
         style?.applyVisibility(baseLayer, showParcels)
+    }
+
+    LaunchedEffect(style, selectedParcel) {
+        style?.getSourceAs<GeoJsonSource>(MapSources.SELECTION_SOURCE_ID)
+            ?.setGeoJson(selectedParcel.toFeatureCollection())
     }
 
     LaunchedEffect(map, style, locationEnabled, centerOnMeRequest) {
@@ -168,6 +201,25 @@ private fun Style.addFarmLayers() {
         addLayer(ortho)
         addLayer(parcels)
     }
+
+    // Zaznaczona działka: półprzezroczyste wypełnienie (widać zdjęcie pod spodem) + wyraźny obrys.
+    addSource(GeoJsonSource(MapSources.SELECTION_SOURCE_ID))
+    val selectionFill = FillLayer(MapSources.SELECTION_FILL_LAYER_ID, MapSources.SELECTION_SOURCE_ID)
+        .withProperties(fillColor(SELECTION_FILL_COLOR), fillOpacity(SELECTION_FILL_OPACITY))
+    val selectionLine = LineLayer(MapSources.SELECTION_LINE_LAYER_ID, MapSources.SELECTION_SOURCE_ID)
+        .withProperties(lineColor(SELECTION_LINE_COLOR), lineWidth(SELECTION_LINE_WIDTH))
+    addLayerAbove(selectionFill, MapSources.PARCELS_LAYER_ID)
+    addLayerAbove(selectionLine, MapSources.SELECTION_FILL_LAYER_ID)
+}
+
+private fun Parcel?.toFeatureCollection(): FeatureCollection {
+    if (this == null) return FeatureCollection.fromFeatures(emptyList<Feature>())
+    val polygons = shape.map { polygon ->
+        (listOf(polygon.outer) + polygon.holes).map { ring ->
+            ring.map { Point.fromLngLat(it.longitude, it.latitude) }
+        }
+    }
+    return FeatureCollection.fromFeature(Feature.fromGeometry(MultiPolygon.fromLngLats(polygons)))
 }
 
 /**
@@ -182,10 +234,16 @@ private fun Style.usePolishLabels() {
 }
 
 private fun Style.applyVisibility(baseLayer: BaseLayer, showParcels: Boolean) {
+    val photo = baseLayer == BaseLayer.PHOTO
     getLayer(MapSources.ORTHO_LAYER_ID)
-        ?.setProperties(visibility(if (baseLayer == BaseLayer.PHOTO) Property.VISIBLE else Property.NONE))
-    getLayer(MapSources.PARCELS_LAYER_ID)
-        ?.setProperties(visibility(if (showParcels) Property.VISIBLE else Property.NONE))
+        ?.setProperties(visibility(if (photo) Property.VISIBLE else Property.NONE))
+    getLayer(MapSources.PARCELS_LAYER_ID)?.setProperties(
+        visibility(if (showParcels) Property.VISIBLE else Property.NONE),
+        // KIEG rysuje cienkie niebieskie linie – na ciemnym zdjęciu (las, pole) giną. Na zdjęciu
+        // przebarwiamy je na białe (bez nasycenia, pełna jasność); na zwykłej mapie zostają niebieskie.
+        rasterSaturation(if (photo) -1f else 0f),
+        rasterBrightnessMin(if (photo) 1f else 0f),
+    )
 }
 
 /** Włącza kropkę „tu jestem". Zwraca `false`, gdy brak zgody na lokalizację. */

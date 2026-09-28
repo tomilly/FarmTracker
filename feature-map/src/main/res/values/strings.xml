@@ -8,4 +8,12 @@
     <string name="map_parcels_zoom_hint">Przybliż mapę, aby zobaczyć działki</string>
     <string name="map_location_denied">Bez zgody na lokalizację nie pokażę, gdzie jesteś.</string>
     <string name="map_open_settings">Otwórz ustawienia</string>
+    <string name="map_tap_parcel_hint">Dotknij działkę, aby ją zaznaczyć</string>
+    <string name="map_parcel_searching">Szukam działki…</string>
+    <string name="map_parcel_not_found">Tu nie ma działki</string>
+    <string name="map_parcel_unavailable">Brak zasięgu – dotknij działkę jeszcze raz</string>
+    <string name="map_parcel_title">Działka %1$s</string>
+    <string name="map_parcel_area">ok. %1$s ha</string>
+    <string name="map_parcel_place">%1$s, gm. %2$s</string>
+    <string name="map_close">Zamknij</string>
 </resources>

@@ -37,7 +37,10 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
 ## Stan
 M0 gotowe (szkielet, motyw, nawigacja z 4 ekranami ról, CI). Wybór roli jest tymczasowy (do M3).
 M1 gotowe (`feature-map`): mapa bazowa OpenFreeMap (polskie nazwy), ortofotomapa Geoportalu (WMTS 3857),
-działki KIEG (WMS, widoczne od zoomu ~16,5), własna pozycja. Adresy usług: `feature-map/.../MapSources.kt`.
+granice działek KIEG (WMS w 3× rozdzielczości, od zoomu 13,5; na zdjęciu białe), własna pozycja,
+zaznaczanie działki dotknięciem (ULDK GetParcelByXY → nakładka + numer, obręb, ha).
+Adresy usług: `feature-map/.../MapSources.kt`, ULDK: `data/.../parcel/UldkParcelRepository.kt`.
+Geometria (WKT, powierzchnia) w `core-domain/.../geo`.
 Następny: M2 – pola (rysowanie, ULDK). Kamienie milowe: docs/BRIEF.md §9.
 
 ## Emulator (uwagi)

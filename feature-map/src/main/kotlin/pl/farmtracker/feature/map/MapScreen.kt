@@ -13,18 +13,26 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Satellite
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -48,12 +58,17 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.FarmTrackerTopBar
 import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
+import java.text.NumberFormat
+import java.util.Locale
 
 private val LocationPermissions = arrayOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -98,7 +113,9 @@ fun MapScreen(
                     showParcels = uiState.showParcels,
                     locationEnabled = uiState.locationAccess == LocationAccess.GRANTED,
                     centerOnMeRequest = uiState.centerOnMeRequest,
+                    selectedParcel = uiState.selectedParcel,
                     onZoomChanged = viewModel::onZoomChanged,
+                    onMapTap = viewModel::onMapTapped,
                     modifier = Modifier.fillMaxSize(),
                 )
                 WhereAmIButton(
@@ -110,6 +127,7 @@ fun MapScreen(
                 uiState = uiState,
                 onSelectBaseLayer = viewModel::selectBaseLayer,
                 onToggleParcels = viewModel::toggleParcels,
+                onClearParcel = viewModel::clearParcelSelection,
                 onOpenSettings = { context.openAppSettings() },
             )
         }
@@ -134,6 +152,7 @@ internal fun MapControls(
     uiState: MapUiState,
     onSelectBaseLayer: (BaseLayer) -> Unit,
     onToggleParcels: () -> Unit,
+    onClearParcel: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -155,13 +174,7 @@ internal fun MapControls(
                     tone = Tone.Neutral,
                 )
             }
-            if (uiState.showParcelsZoomHint) {
-                StatusPill(
-                    text = stringResource(R.string.map_parcels_zoom_hint),
-                    icon = Icons.Filled.ZoomIn,
-                    tone = Tone.Warning,
-                )
-            }
+            ParcelMessage(uiState = uiState, onClearParcel = onClearParcel)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LayerButton(
                     text = stringResource(R.string.map_layer_map),
@@ -207,6 +220,85 @@ private fun LayerButton(
     )
 }
 
+/** Jeden komunikat o działkach naraz – ten najważniejszy dla tego, co użytkownik właśnie zrobił. */
+@Composable
+private fun ParcelMessage(uiState: MapUiState, onClearParcel: () -> Unit) {
+    when (val selection = uiState.parcelSelection) {
+        is ParcelSelection.Selected -> SelectedParcelCard(parcel = selection.parcel, onClose = onClearParcel)
+        ParcelSelection.Searching -> StatusPill(
+            text = stringResource(R.string.map_parcel_searching),
+            icon = Icons.Filled.Search,
+        )
+        ParcelSelection.NotFound -> StatusPill(
+            text = stringResource(R.string.map_parcel_not_found),
+            icon = Icons.Filled.Info,
+            tone = Tone.Warning,
+        )
+        ParcelSelection.Unavailable -> StatusPill(
+            text = stringResource(R.string.map_parcel_unavailable),
+            icon = Icons.Filled.CloudOff,
+            tone = Tone.Warning,
+        )
+        ParcelSelection.None -> when {
+            uiState.showParcelsZoomHint -> StatusPill(
+                text = stringResource(R.string.map_parcels_zoom_hint),
+                icon = Icons.Filled.ZoomIn,
+                tone = Tone.Warning,
+            )
+            uiState.parcelsVisible -> StatusPill(
+                text = stringResource(R.string.map_tap_parcel_hint),
+                icon = Icons.Filled.TouchApp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectedParcelCard(parcel: Parcel, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Grass, contentDescription = null, modifier = Modifier.size(32.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.map_parcel_title, parcel.number),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.map_parcel_area, formatHectares(parcel.areaHectares)),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.map_parcel_place, parcel.precinct, parcel.commune),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            TextButton(onClick = onClose, modifier = Modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget)) {
+                Icon(Icons.Filled.Close, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.map_close), style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+private fun formatHectares(hectares: Double): String =
+    NumberFormat.getNumberInstance(Locale.forLanguageTag("pl-PL"))
+        .apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        .format(hectares)
+
 private fun Context.hasLocationPermission(): Boolean = LocationPermissions.any {
     ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
 }
@@ -223,9 +315,40 @@ private fun Context.openAppSettings() {
 private fun MapControlsPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         MapControls(
-            uiState = MapUiState(baseLayer = BaseLayer.PHOTO, showParcels = true, zoom = 14.0),
+            uiState = MapUiState(baseLayer = BaseLayer.PHOTO, showParcels = true, zoom = 12.0),
             onSelectBaseLayer = {},
             onToggleParcels = {},
+            onClearParcel = {},
+            onOpenSettings = {},
+        )
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun MapControlsSelectedParcelPreview() {
+    val parcel = Parcel(
+        id = "302103_5.0007.125",
+        number = "125",
+        precinct = "Otusz",
+        commune = "Buk",
+        shape = listOf(
+            GeoPolygon(
+                listOf(GeoPoint(52.355, 16.578), GeoPoint(52.354, 16.581), GeoPoint(52.352, 16.585)),
+            ),
+        ),
+    )
+    FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
+        MapControls(
+            uiState = MapUiState(
+                baseLayer = BaseLayer.PHOTO,
+                showParcels = true,
+                zoom = 15.0,
+                parcelSelection = ParcelSelection.Selected(parcel),
+            ),
+            onSelectBaseLayer = {},
+            onToggleParcels = {},
+            onClearParcel = {},
             onOpenSettings = {},
         )
     }
@@ -239,6 +362,7 @@ private fun MapControlsDeniedPreview() {
             uiState = MapUiState(locationAccess = LocationAccess.DENIED),
             onSelectBaseLayer = {},
             onToggleParcels = {},
+            onClearParcel = {},
             onOpenSettings = {},
         )
     }

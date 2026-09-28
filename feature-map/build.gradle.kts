@@ -10,6 +10,7 @@ android {
 
 dependencies {
     implementation(projects.coreUi)
+    implementation(projects.data)
     implementation(libs.maplibre.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

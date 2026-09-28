@@ -11,6 +11,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import pl.farmtracker.data.network.HttpGet
+import pl.farmtracker.data.network.UrlConnectionHttpGet
+import pl.farmtracker.data.parcel.ParcelRepository
+import pl.farmtracker.data.parcel.UldkParcelRepository
 import pl.farmtracker.data.session.DataStoreSessionRepository
 import pl.farmtracker.data.session.SessionRepository
 import javax.inject.Singleton
@@ -21,6 +25,12 @@ internal interface DataModule {
 
     @Binds
     fun bindSessionRepository(impl: DataStoreSessionRepository): SessionRepository
+
+    @Binds
+    fun bindParcelRepository(impl: UldkParcelRepository): ParcelRepository
+
+    @Binds
+    fun bindHttpGet(impl: UrlConnectionHttpGet): HttpGet
 
     companion object {
         @Provides
