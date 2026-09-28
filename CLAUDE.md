@@ -36,4 +36,10 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
 
 ## Stan
 M0 gotowe (szkielet, motyw, nawigacja z 4 ekranami ról, CI). Wybór roli jest tymczasowy (do M3).
-Następny: M1 – mapa. Kamienie milowe: docs/BRIEF.md §9.
+M1 gotowe (`feature-map`): mapa bazowa OpenFreeMap (polskie nazwy), ortofotomapa Geoportalu (WMTS 3857),
+działki KIEG (WMS, widoczne od zoomu ~16,5), własna pozycja. Adresy usług: `feature-map/.../MapSources.kt`.
+Następny: M2 – pola (rysowanie, ULDK). Kamienie milowe: docs/BRIEF.md §9.
+
+## Emulator (uwagi)
+- Obraz API 37 Google Play: GPS emulatora bywa „martwy" (0 pozycji) – zimny start (`-no-snapshot-load`)
+  i ustawienie lokalizacji w Extended controls → Location. `adb emu geo fix` bywa ignorowane.

@@ -19,20 +19,23 @@ import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
+import pl.farmtracker.feature.roles.common.OpenMapButton
 
 @Composable
 fun BaseScreen(
+    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
     viewModel: BaseViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    BaseContent(uiState = uiState, onSwitchRole = onSwitchRole, modifier = modifier)
+    BaseContent(uiState = uiState, onOpenMap = onOpenMap, onSwitchRole = onSwitchRole, modifier = modifier)
 }
 
 @Composable
 internal fun BaseContent(
     uiState: BaseUiState,
+    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -45,6 +48,8 @@ internal fun BaseContent(
                 StatusPill(text = driver, icon = Icons.Filled.LocalShipping, tone = Tone.Go)
             }
         }
+
+        OpenMapButton(onClick = onOpenMap)
     }
 }
 
@@ -52,6 +57,10 @@ internal fun BaseContent(
 @Composable
 private fun BaseContentPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        BaseContent(uiState = BaseUiState(incomingDrivers = listOf("Marek", "Janek")), onSwitchRole = {})
+        BaseContent(
+            uiState = BaseUiState(incomingDrivers = listOf("Marek", "Janek")),
+            onOpenMap = {},
+            onSwitchRole = {},
+        )
     }
 }

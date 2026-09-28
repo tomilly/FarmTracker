@@ -22,9 +22,11 @@ import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
+import pl.farmtracker.feature.roles.common.OpenMapButton
 
 @Composable
 fun HarvesterScreen(
+    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
     viewModel: HarvesterViewModel = hiltViewModel(),
@@ -36,6 +38,7 @@ fun HarvesterScreen(
         onStopWork = viewModel::stopWork,
         onStartMoving = viewModel::startMoving,
         onArrived = viewModel::arrivedAtField,
+        onOpenMap = onOpenMap,
         onSwitchRole = onSwitchRole,
         modifier = modifier,
     )
@@ -48,6 +51,7 @@ internal fun HarvesterContent(
     onStopWork: () -> Unit,
     onStartMoving: () -> Unit,
     onArrived: () -> Unit,
+    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -99,6 +103,8 @@ internal fun HarvesterContent(
                 tone = Tone.Stop,
             )
         }
+
+        OpenMapButton(onClick = onOpenMap)
     }
 }
 
@@ -112,6 +118,7 @@ private fun HarvesterWorkingPreview() {
             onStopWork = {},
             onStartMoving = {},
             onArrived = {},
+            onOpenMap = {},
             onSwitchRole = {},
         )
     }
@@ -127,6 +134,7 @@ private fun HarvesterIdlePreview() {
             onStopWork = {},
             onStartMoving = {},
             onArrived = {},
+            onOpenMap = {},
             onSwitchRole = null,
         )
     }

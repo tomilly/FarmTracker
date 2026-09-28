@@ -22,6 +22,10 @@ data object BaseDestination : AppDestination
 @Serializable
 data object AdminDestination : AppDestination
 
+/** Mapa otwierana z ekranu roli („Mapa" / „Pola"); nie jest ekranem startowym żadnej roli. */
+@Serializable
+data object MapDestination
+
 /** Ekran, na który trafia osoba o danej roli; bez roli – wybór roli (tymczasowo, do M3). */
 fun Role?.toDestination(): AppDestination = when (this) {
     null -> RolePickerDestination

@@ -21,6 +21,7 @@
     <string name="roles_driver_to_base">Wiozę do bazy</string>
     <string name="roles_driver_unloading">Rozładunek</string>
     <string name="roles_undo">Cofnij</string>
+    <string name="roles_open_map">Mapa</string>
 
     <!-- Baza -->
     <string name="roles_base_incoming_title">Kto jedzie do bazy</string>

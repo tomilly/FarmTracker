@@ -30,6 +30,7 @@ android {
 dependencies {
     implementation(projects.coreUi)
     implementation(projects.data)
+    implementation(projects.featureMap)
     implementation(projects.featureRoles)
 
     implementation(libs.androidx.core.ktx)

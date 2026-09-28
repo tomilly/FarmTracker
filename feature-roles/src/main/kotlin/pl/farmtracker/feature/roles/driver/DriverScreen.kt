@@ -34,6 +34,7 @@ import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
+import pl.farmtracker.feature.roles.common.OpenMapButton
 
 private data class DriverAction(val state: DriverState, @StringRes val label: Int, val icon: ImageVector)
 
@@ -47,6 +48,7 @@ private val DriverActions = listOf(
 
 @Composable
 fun DriverScreen(
+    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
     viewModel: DriverViewModel = hiltViewModel(),
@@ -56,6 +58,7 @@ fun DriverScreen(
         uiState = uiState,
         onSelectState = viewModel::selectState,
         onUndo = viewModel::undo,
+        onOpenMap = onOpenMap,
         onSwitchRole = onSwitchRole,
         modifier = modifier,
     )
@@ -66,6 +69,7 @@ internal fun DriverContent(
     uiState: DriverUiState,
     onSelectState: (DriverState) -> Unit,
     onUndo: () -> Unit,
+    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -99,6 +103,8 @@ internal fun DriverContent(
                 Text(stringResource(R.string.roles_undo), style = MaterialTheme.typography.labelLarge)
             }
         }
+
+        OpenMapButton(onClick = onOpenMap)
     }
 }
 
@@ -110,6 +116,7 @@ private fun DriverContentPreview() {
             uiState = DriverUiState(state = DriverState.LOADING, previousState = DriverState.TO_FIELD),
             onSelectState = {},
             onUndo = {},
+            onOpenMap = {},
             onSwitchRole = {},
         )
     }

@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,38 +43,67 @@ import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 
 /**
- * Szkielet ekranu: górny pasek z ikoną i tytułem („gdzie jestem") oraz przewijana kolumna treści
- * z dużymi odstępami.
+ * Górny pasek aplikacji: ikona + tytuł („gdzie jestem").
+ *
+ * @param onBack gdy nie `null`, po lewej pojawia się „Wróć" (ikona + podpis, nie sama strzałka).
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FarmTrackerTopBar(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    TopAppBar(
+        modifier = modifier,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(text = title, style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        navigationIcon = {
+            if (onBack != null) {
+                TextButton(
+                    onClick = onBack,
+                    modifier = Modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.core_ui_back), style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        },
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    )
+}
+
+/**
+ * Szkielet ekranu: [FarmTrackerTopBar] oraz przewijana kolumna treści z dużymi odstępami.
+ */
 @Composable
 fun FarmTrackerScaffold(
     title: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(text = title, style = MaterialTheme.typography.titleLarge)
-                    }
-                },
-                actions = actions,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
+        topBar = { FarmTrackerTopBar(title = title, icon = icon, onBack = onBack, actions = actions) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
