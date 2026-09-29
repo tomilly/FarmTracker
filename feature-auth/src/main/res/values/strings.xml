@@ -15,6 +15,7 @@
     <string name="auth_invalid_number">To nie wygląda na numer telefonu</string>
     <string name="auth_too_many">Za dużo prób – spróbuj za kilka minut</string>
     <string name="auth_unavailable">Brak zasięgu – spróbuj jeszcze raz</string>
+    <string name="auth_service_down">Logowanie chwilowo nie działa – spróbuj później</string>
     <string name="auth_wrong_code">Zły kod – wpisz jeszcze raz</string>
     <string name="auth_expired">Kod wygasł – wyślij nowy</string>
 

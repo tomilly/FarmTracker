@@ -162,6 +162,7 @@ private fun Problem(problem: LoginProblem?) {
                 LoginProblem.INVALID_NUMBER -> R.string.auth_invalid_number
                 LoginProblem.TOO_MANY_ATTEMPTS -> R.string.auth_too_many
                 LoginProblem.UNAVAILABLE -> R.string.auth_unavailable
+                LoginProblem.SERVICE_DOWN -> R.string.auth_service_down
                 LoginProblem.WRONG_CODE -> R.string.auth_wrong_code
                 LoginProblem.EXPIRED -> R.string.auth_expired
             },

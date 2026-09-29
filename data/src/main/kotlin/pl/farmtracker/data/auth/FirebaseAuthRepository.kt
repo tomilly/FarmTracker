@@ -99,7 +99,7 @@ class FirebaseAuthRepository @Inject constructor(
             is FirebaseAuthInvalidCredentialsException -> SendCodeResult.InvalidNumber
             is FirebaseTooManyRequestsException -> SendCodeResult.TooManyAttempts
             is FirebaseNetworkException -> SendCodeResult.Unavailable
-            else -> SendCodeResult.Unavailable
+            else -> SendCodeResult.ServiceDown
         }
     }
 

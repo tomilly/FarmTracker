@@ -72,6 +72,10 @@ class LoginViewModelTest {
         sendTo("600123456")
         assertEquals(LoginProblem.UNAVAILABLE, state.problem)
 
+        auth.sendResult = SendCodeResult.ServiceDown
+        viewModel.sendCode()
+        assertEquals(LoginProblem.SERVICE_DOWN, state.problem)
+
         auth.sendResult = SendCodeResult.CodeSent
         viewModel.sendCode()
         auth.verifyFailure = VerifyCodeResult.Expired

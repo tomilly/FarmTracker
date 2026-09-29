@@ -23,7 +23,11 @@ sealed interface SendCodeResult {
     /** Za dużo prób z tego numeru / telefonu – trzeba chwilę odczekać. */
     data object TooManyAttempts : SendCodeResult
 
+    /** Brak sieci – można spróbować od razu po odzyskaniu zasięgu. */
     data object Unavailable : SendCodeResult
+
+    /** Sieć jest, ale logowanie po stronie serwera nie działa (np. źle ustawiony projekt) – nie „brak zasięgu". */
+    data object ServiceDown : SendCodeResult
 }
 
 sealed interface VerifyCodeResult {

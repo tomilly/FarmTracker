@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 enum class LoginStep { PHONE, CODE }
 
-enum class LoginProblem { INVALID_NUMBER, TOO_MANY_ATTEMPTS, UNAVAILABLE, WRONG_CODE, EXPIRED }
+enum class LoginProblem { INVALID_NUMBER, TOO_MANY_ATTEMPTS, UNAVAILABLE, SERVICE_DOWN, WRONG_CODE, EXPIRED }
 
 data class LoginUiState(
     val step: LoginStep = LoginStep.PHONE,
@@ -63,6 +63,7 @@ class LoginViewModel @Inject constructor(
                     SendCodeResult.InvalidNumber -> current.copy(busy = false, problem = LoginProblem.INVALID_NUMBER)
                     SendCodeResult.TooManyAttempts -> current.copy(busy = false, problem = LoginProblem.TOO_MANY_ATTEMPTS)
                     SendCodeResult.Unavailable -> current.copy(busy = false, problem = LoginProblem.UNAVAILABLE)
+                    SendCodeResult.ServiceDown -> current.copy(busy = false, problem = LoginProblem.SERVICE_DOWN)
                 }
             }
         }
