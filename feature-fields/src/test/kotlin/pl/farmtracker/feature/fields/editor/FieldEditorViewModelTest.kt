@@ -371,4 +371,29 @@ class FieldEditorViewModelTest {
 
         assertTrue(edit.uiState.value.done)
     }
+
+    @Test
+    fun `a parcel already in another field is not added and the field is named`() = runTest {
+        fields.save(existing.copy(parcelIds = listOf(north.id)))
+
+        tap(north, inNorth)
+
+        assertTrue(state.parcels.isEmpty())
+        assertEquals(LookupProblem.ALREADY_USED, state.lastProblem)
+        assertEquals("Za lasem", state.problemFieldName)
+        assertEquals(0, state.pendingLookups)
+    }
+
+    @Test
+    fun `picking a search result that belongs to another field shows it but does not add it`() = runTest {
+        fields.save(existing.copy(parcelIds = listOf(north.id)))
+        viewModel.openSearch()
+
+        viewModel.pickSearchResult(north)
+
+        assertEquals(EditorStep.SHAPE, state.step)
+        assertTrue(state.parcels.isEmpty())
+        assertEquals(LookupProblem.ALREADY_USED, state.lastProblem)
+        assertTrue(viewModel.chrome.state.value.cameraRequest is CameraRequest.ShowArea)
+    }
 }

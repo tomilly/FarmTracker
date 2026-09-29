@@ -186,7 +186,7 @@ private fun ParcelsPanel(
         if (uiState.parcels.isEmpty()) {
             when {
                 uiState.pendingLookups > 0 -> StatusPill(stringResource(R.string.fields_searching), Icons.Filled.Search)
-                uiState.lastProblem != null -> ProblemPill(uiState.lastProblem)
+                uiState.lastProblem != null -> ProblemPill(uiState.lastProblem, uiState.problemFieldName)
                 else -> StatusPill(stringResource(R.string.fields_tap_parcels_hint), Icons.Filled.TouchApp)
             }
         } else {
@@ -194,7 +194,8 @@ private fun ParcelsPanel(
                 title = parcelsCount(uiState.parcels.size),
                 detail = when {
                     uiState.pendingLookups > 0 -> SummaryDetail.Note(stringResource(R.string.fields_searching))
-                    uiState.lastProblem != null -> SummaryDetail.Warning(problemText(uiState.lastProblem))
+                    uiState.lastProblem != null ->
+                        SummaryDetail.Warning(problemText(uiState.lastProblem, uiState.problemFieldName))
                     else -> SummaryDetail.Area(uiState.areaHectares)
                 },
                 onUndo = onUndo,
@@ -285,21 +286,20 @@ private fun ButtonPair(content: @Composable RowScope.() -> Unit) {
 private val MessageSlotMinHeight = 80.dp
 
 @Composable
-private fun ProblemPill(problem: LookupProblem) {
+private fun ProblemPill(problem: LookupProblem, fieldName: String?) {
     StatusPill(
-        text = problemText(problem),
+        text = problemText(problem, fieldName),
         icon = if (problem == LookupProblem.UNAVAILABLE) Icons.Filled.CloudOff else Icons.Filled.Info,
         tone = Tone.Warning,
     )
 }
 
 @Composable
-private fun problemText(problem: LookupProblem): String = stringResource(
-    when (problem) {
-        LookupProblem.NOT_FOUND -> R.string.fields_not_found
-        LookupProblem.UNAVAILABLE -> R.string.fields_unavailable
-    },
-)
+private fun problemText(problem: LookupProblem, fieldName: String?): String = when (problem) {
+    LookupProblem.NOT_FOUND -> stringResource(R.string.fields_not_found)
+    LookupProblem.UNAVAILABLE -> stringResource(R.string.fields_unavailable)
+    LookupProblem.ALREADY_USED -> stringResource(R.string.fields_parcel_in_other_field, fieldName.orEmpty())
+}
 
 @Composable
 private fun NextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {

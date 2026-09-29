@@ -13,6 +13,7 @@
     <string name="fields_searching">Szukam działki…</string>
     <string name="fields_not_found">Tu nie ma działki</string>
     <string name="fields_unavailable">Brak zasięgu – dotknij działkę jeszcze raz</string>
+    <string name="fields_parcel_in_other_field">Ta działka jest już w polu „%1$s”</string>
     <string name="fields_parcels_one">%1$d działka</string>
     <string name="fields_parcels_few">%1$d działki</string>
     <string name="fields_parcels_many">%1$d działek</string>

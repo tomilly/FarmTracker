@@ -38,7 +38,8 @@ enum class EditorStep { SHAPE, SEARCH, DETAILS, ENTRY }
 /** Jak powstaje kształt pola: z działek ewidencyjnych albo narysowany po rogach. */
 enum class ShapeMode { PARCELS, DRAW }
 
-enum class LookupProblem { NOT_FOUND, UNAVAILABLE }
+/** [ALREADY_USED]: działka należy już do innego pola (nazwa w [FieldEditorUiState.problemFieldName]). */
+enum class LookupProblem { NOT_FOUND, UNAVAILABLE, ALREADY_USED }
 
 /** Wynik wyszukiwania z odległością od środka mapy (gdy znany) – najbliższe na górze. */
 data class SearchHit(val parcel: Parcel, val distanceKm: Double?)
@@ -60,6 +61,7 @@ data class FieldEditorUiState(
     val drawnPoints: List<GeoPoint> = emptyList(),
     val pendingLookups: Int = 0,
     val lastProblem: LookupProblem? = null,
+    val problemFieldName: String? = null,
     val searchQuery: String = "",
     val search: SearchState = SearchState.Idle,
     val name: String = "",
@@ -168,16 +170,31 @@ class FieldEditorViewModel @Inject constructor(
         _uiState.update { it.copy(pendingLookups = it.pendingLookups + 1, lastProblem = null) }
         viewModelScope.launch {
             val result = parcelRepository.parcelAt(point)
+            val owner = (result as? ParcelLookup.Found)?.let { fieldUsing(it.parcel) }
             _uiState.update { state ->
                 val pending = state.pendingLookups - 1
-                when (result) {
-                    is ParcelLookup.Found -> state.copy(pendingLookups = pending, parcels = state.parcels.plusUnique(result.parcel))
-                    ParcelLookup.NotFound -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.NOT_FOUND)
-                    ParcelLookup.Unavailable -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.UNAVAILABLE)
+                when {
+                    owner != null -> state.withAlreadyUsed(owner).copy(pendingLookups = pending)
+                    result is ParcelLookup.Found ->
+                        state.copy(pendingLookups = pending, parcels = state.parcels.plusUnique(result.parcel))
+                    result == ParcelLookup.NotFound -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.NOT_FOUND)
+                    else -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.UNAVAILABLE)
                 }
             }
         }
     }
+
+    /**
+     * Pole, do którego działka już należy. Jedna działka w dwóch polach zmyliłaby wykrywanie,
+     * na którym polu jest sieczkarnia (M4) – dlatego jej nie dodajemy, tylko mówimy dlaczego.
+     */
+    private suspend fun fieldUsing(parcel: Parcel): Field? {
+        val editedId = _uiState.value.editing?.id
+        return fieldRepository.fields.first().firstOrNull { it.id != editedId && parcel.id in it.parcelIds }
+    }
+
+    private fun FieldEditorUiState.withAlreadyUsed(owner: Field) =
+        copy(lastProblem = LookupProblem.ALREADY_USED, problemFieldName = owner.name)
 
     /** Rysowanie ręczne – gdy pole nie pokrywa się z działkami (np. część działki). */
     fun startDrawing() = _uiState.update {
@@ -221,18 +238,23 @@ class FieldEditorViewModel @Inject constructor(
         }
     }
 
-    /** Wybrana z wyników działka trafia do pola, a mapa pokazuje ją w całości. */
+    /**
+     * Wybrana z wyników działka trafia do pola, a mapa pokazuje ją w całości. Gdy należy już do innego
+     * pola, mapa też ją pokazuje, ale zamiast dodania pojawia się wyjaśnienie.
+     */
     fun pickSearchResult(parcel: Parcel) {
-        _uiState.update { state ->
-            state.copy(
-                step = EditorStep.SHAPE,
-                shapeMode = ShapeMode.PARCELS,
-                drawnPoints = emptyList(),
-                parcels = state.parcels.plusUnique(parcel),
-                lastProblem = null,
-            )
+        viewModelScope.launch {
+            val owner = fieldUsing(parcel)
+            _uiState.update { state ->
+                val back = state.copy(step = EditorStep.SHAPE, shapeMode = ShapeMode.PARCELS, drawnPoints = emptyList())
+                if (owner != null) {
+                    back.withAlreadyUsed(owner)
+                } else {
+                    back.copy(parcels = state.parcels.plusUnique(parcel), lastProblem = null)
+                }
+            }
+            chrome.showArea(parcel.shape)
         }
-        chrome.showArea(parcel.shape)
     }
 
     fun goToDetails() {
