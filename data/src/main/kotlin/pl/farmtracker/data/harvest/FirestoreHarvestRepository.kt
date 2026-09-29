@@ -7,11 +7,11 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import pl.farmtracker.core.domain.Harvest
@@ -30,6 +31,7 @@ import pl.farmtracker.data.base.DataStoreBaseRepository
 import pl.farmtracker.data.field.DataStoreFieldRepository
 import pl.farmtracker.data.field.fieldsOf
 import pl.farmtracker.data.field.toFirestoreData
+import pl.farmtracker.data.firebase.changes
 import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import java.util.Date
 import javax.inject.Inject
@@ -61,11 +63,18 @@ class FirestoreHarvestRepository @Inject constructor(
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 
-    override val membership: Flow<Membership> = userId.flatMapLatest { uid ->
+    /**
+     * Zwiększane po dołączeniu i założeniu zbioru – nasłuch członkostwa zaczyna się od nowa. Po usunięciu
+     * ze zbioru kończy się na „nie należę", a ponowne dołączenie do tego samego zbioru nie zmienia `users/{uid}`,
+     * więc sam by się nie obudził.
+     */
+    private val reconnects = MutableStateFlow(0)
+
+    override val membership: Flow<Membership> = combine(userId, reconnects) { uid, _ -> uid }.flatMapLatest { uid ->
         if (uid == null) {
             flowOf(Membership.None)
         } else {
-            db.collection(USERS).document(uid).snapshots().flatMapLatest { user ->
+            db.collection(USERS).document(uid).changes().flatMapLatest { user ->
                 val harvestId = user.getString(HARVEST_ID)
                 if (harvestId == null) flowOf(Membership.None) else joined(harvestId, uid)
             }
@@ -74,8 +83,8 @@ class FirestoreHarvestRepository @Inject constructor(
 
     /** Zbiór i moja karta w nim. Brak karty (usunięto mnie) albo brak dostępu = nie należę już do zbioru. */
     private fun joined(harvestId: String, uid: String): Flow<Membership> = combine(
-        harvestRef(harvestId).snapshots(),
-        harvestRef(harvestId).collection(MEMBERS).document(uid).snapshots(),
+        harvestRef(harvestId).changes(),
+        harvestRef(harvestId).collection(MEMBERS).document(uid).changes(),
     ) { harvest, me ->
         val member = me.toMember()
         if (!harvest.exists() || member == null) {
@@ -91,7 +100,7 @@ class FirestoreHarvestRepository @Inject constructor(
         if (membership !is Membership.Joined) {
             flowOf(emptyList())
         } else {
-            harvestRef(membership.harvest.id).collection(MEMBERS).snapshots()
+            harvestRef(membership.harvest.id).collection(MEMBERS).changes()
                 .map { snapshot -> snapshot.documents.mapNotNull { it.toMember() } }
                 .retryWhenNotYetMember()
                 .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }
@@ -107,6 +116,7 @@ class FirestoreHarvestRepository @Inject constructor(
             .set(db.collection(USERS).document(user.uid), mapOf(HARVEST_ID to harvest.id))
         // Bez zasięgu zapis czeka w kopii na telefonie, a ekran i tak przejdzie dalej – nie zakładamy drugi raz.
         if (!commitOrQueue { batch.commit() }) return false
+        reconnects.update { it + 1 }
         moveLocalDataTo(harvest.id)
         return true
     }
@@ -144,7 +154,9 @@ class FirestoreHarvestRepository @Inject constructor(
                 memberData(myName, user.phoneNumber, role) + (INVITE_CODE to code.digits),
             )
             .set(db.collection(USERS).document(user.uid), mapOf(HARVEST_ID to harvestId))
-        return if (commitOrQueue { batch.commit() }) JoinResult.Joined else JoinResult.Unavailable
+        if (!commitOrQueue { batch.commit() }) return JoinResult.Unavailable
+        reconnects.update { it + 1 }
+        return JoinResult.Joined
     }
 
     override suspend fun createInvite(role: Role): Invite? {

@@ -3,7 +3,6 @@ package pl.farmtracker.data.location
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -17,6 +16,7 @@ import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.data.firebase.changes
 import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.LAT
@@ -46,7 +46,7 @@ class FirestoreLiveLocationRepository @Inject constructor(
         if (membership !is Membership.Joined) {
             flowOf(emptyList())
         } else {
-            db.collection(HARVESTS).document(membership.harvest.id).collection(LOCATIONS).snapshots()
+            db.collection(HARVESTS).document(membership.harvest.id).collection(LOCATIONS).changes()
                 .map { snapshot -> snapshot.documents.mapNotNull { it.toLiveLocation(myId = membership.me.userId) } }
                 .retryWhenNotYetMember()
                 .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }

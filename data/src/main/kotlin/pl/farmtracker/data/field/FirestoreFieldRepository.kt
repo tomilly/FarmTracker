@@ -4,7 +4,6 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import pl.farmtracker.core.domain.Field
+import pl.farmtracker.data.firebase.changes
 import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
 import pl.farmtracker.data.harvest.HarvestRepository
@@ -41,7 +41,7 @@ class FirestoreFieldRepository @Inject constructor(
         if (membership !is Membership.Joined) {
             flowOf(emptyList())
         } else {
-            db.fieldsOf(membership.harvest.id).snapshots()
+            db.fieldsOf(membership.harvest.id).changes()
                 .map { snapshot ->
                     snapshot.documents.mapNotNull { it.toField() }.sortedWith(compareBy({ it.order }, { it.name }))
                 }

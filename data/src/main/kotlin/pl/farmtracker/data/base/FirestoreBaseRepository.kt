@@ -3,7 +3,6 @@ package pl.farmtracker.data.base
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import pl.farmtracker.core.domain.Base
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.data.firebase.changes
 import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.BASE
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
@@ -36,7 +36,7 @@ class FirestoreBaseRepository @Inject constructor(
         if (membership !is Membership.Joined) {
             flowOf(null)
         } else {
-            harvestRef(membership.harvest.id).snapshots()
+            harvestRef(membership.harvest.id).changes()
                 .map { snapshot ->
                     val point = snapshot.get(BASE) as? Map<*, *>
                     val lat = (point?.get(LAT) as? Number)?.toDouble()
