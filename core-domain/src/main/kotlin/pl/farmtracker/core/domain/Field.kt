@@ -4,6 +4,7 @@ import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.domain.geo.containsPoint
+import pl.farmtracker.core.domain.geo.distanceMeters
 
 /** Kolory pól do wyboru. Bez zielonego (tło mapy) i żółtego (zaznaczenie) – żeby pola były widoczne. */
 enum class FieldColor { BLUE, ORANGE, PURPLE, PINK, CYAN, BROWN }
@@ -31,3 +32,17 @@ data class Field(
 
 /** Pole pod dotkniętym punktem mapy (`null` – dotknięto poza polami). */
 fun List<Field>.fieldAt(point: GeoPoint): Field? = firstOrNull { it.shape.containsPoint(point) }
+
+/**
+ * Na którym polu jest maszyna (geofencing, BRIEF §5 p. 6). Z pola „wyjeżdża" się dopiero [FIELD_EXIT_MARGIN_METERS]
+ * za granicą – GPS skacze o kilkanaście metrów i przy jeździe wzdłuż granicy status by migał.
+ *
+ * @param currentFieldId pole z poprzedniej pozycji
+ */
+fun List<Field>.fieldWith(point: GeoPoint, currentFieldId: String?): Field? {
+    val current = firstOrNull { it.id == currentFieldId }
+    if (current != null && current.shape.distanceMeters(point) <= FIELD_EXIT_MARGIN_METERS) return current
+    return fieldAt(point)
+}
+
+const val FIELD_EXIT_MARGIN_METERS = 30.0

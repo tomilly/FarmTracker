@@ -23,4 +23,30 @@ class FieldTest {
     fun `a tap outside every field finds nothing`() {
         assertNull(listOf(south, north).fieldAt(GeoPoint(50.1, 17.1)))
     }
+
+    private val east = Field(id = "e", name = "Wschód", color = FieldColor.CYAN, shape = listOf(square(50.0, 17.02)))
+
+    /** Punkt ~14 m na wschód od wschodniej granicy pola „Południe" (0,0002° długości na 50° N). */
+    private val justOutsideSouth = GeoPoint(50.005, 17.0102)
+
+    @Test
+    fun `a machine entering a field is on it`() {
+        assertEquals(south, listOf(south, east).fieldWith(GeoPoint(50.005, 17.005), currentFieldId = null))
+    }
+
+    @Test
+    fun `a machine a few metres past the edge stays on its field - GPS jumps`() {
+        assertEquals(south, listOf(south, east).fieldWith(justOutsideSouth, currentFieldId = "s"))
+    }
+
+    @Test
+    fun `the same spot does not count as the field for a machine arriving from the road`() {
+        assertNull(listOf(south, east).fieldWith(justOutsideSouth, currentFieldId = null))
+    }
+
+    @Test
+    fun `a machine well past the edge has left the field`() {
+        assertNull(listOf(south, east).fieldWith(GeoPoint(50.005, 17.015), currentFieldId = "s"))
+        assertEquals(east, listOf(south, east).fieldWith(GeoPoint(50.005, 17.025), currentFieldId = "s"))
+    }
 }
