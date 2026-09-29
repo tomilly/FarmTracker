@@ -66,7 +66,11 @@ class MapViewModel @Inject constructor(
         _parcelSelection.value = ParcelSelection.Searching
         parcelLookup = viewModelScope.launch {
             _parcelSelection.value = when (val result = parcelRepository.parcelAt(point)) {
-                is ParcelLookup.Found -> ParcelSelection.Selected(result.parcel)
+                is ParcelLookup.Found -> {
+                    // Cała działka na ekranie (nad kartą z opisem) – bez przybliżania widoku.
+                    chrome.showArea(result.parcel.shape, zoomIn = false)
+                    ParcelSelection.Selected(result.parcel)
+                }
                 ParcelLookup.NotFound -> ParcelSelection.NotFound
                 ParcelLookup.Unavailable -> ParcelSelection.Unavailable
             }

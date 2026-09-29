@@ -189,6 +189,8 @@ class FieldEditorViewModel @Inject constructor(
                     else -> state.copy(pendingLookups = pending, lastProblem = LookupProblem.UNAVAILABLE)
                 }
             }
+            // Dotknięta działka cała na ekranie – bez przybliżania, żeby dało się dotykać kolejnych.
+            (result as? ParcelLookup.Found)?.let { chrome.showArea(it.parcel.shape, zoomIn = false) }
         }
     }
 

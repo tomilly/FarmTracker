@@ -23,8 +23,11 @@ sealed interface CameraRequest {
     /** Pokaż mnie i podążaj za mną. */
     data class CenterOnMe(override val id: Int) : CameraRequest
 
-    /** Pokaż cały obszar, np. znalezioną działkę. */
-    data class ShowArea(override val id: Int, val bounds: GeoBounds) : CameraRequest
+    /**
+     * Pokaż cały obszar, np. znalezioną działkę. Bez [zoomIn] mapa tylko się przesuwa (albo oddala,
+     * gdy obszar się nie mieści) – dotknięcie działki nie może nagle przybliżyć widoku.
+     */
+    data class ShowArea(override val id: Int, val bounds: GeoBounds, val zoomIn: Boolean = true) : CameraRequest
 
     /** Pokaż miejsce z bliska, np. znalezioną wieś – z widocznymi granicami działek. */
     data class ShowPlace(override val id: Int, val point: GeoPoint, val zoom: Double) : CameraRequest
@@ -63,15 +66,18 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
 
     private var started = false
 
-    /** Pierwsze otwarcie mapy: z pozwoleniem – od razu pokaż mnie; bez – zapytaj raz. */
+    /**
+     * Pierwsze otwarcie mapy: z pozwoleniem – od razu pokaż mnie; bez – zapytaj raz.
+     * Gdy ekran już poprosił o konkretny widok (np. edytowane pole), zostaje on, a nie „ja".
+     */
     fun onStart(hasLocationPermission: Boolean) {
         if (started) return
         started = true
         _state.update {
-            if (hasLocationPermission) {
-                it.copy(locationAccess = LocationAccess.GRANTED, cameraRequest = it.nextCenterOnMe())
-            } else {
-                it.copy(askForLocation = true)
+            when {
+                !hasLocationPermission -> it.copy(askForLocation = true)
+                it.cameraRequest != null -> it.copy(locationAccess = LocationAccess.GRANTED)
+                else -> it.copy(locationAccess = LocationAccess.GRANTED, cameraRequest = it.nextCenterOnMe())
             }
         }
     }
@@ -103,10 +109,13 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
         }
     }
 
-    /** Pokaż cały kształt na ekranie (np. działkę znalezioną po numerze). */
-    fun showArea(shape: List<GeoPolygon>) {
+    /**
+     * Pokaż cały kształt na ekranie (np. działkę znalezioną po numerze). [zoomIn] = `false` przy
+     * dotkniętej działce: mapa przesuwa się do niej, ale nie przybliża.
+     */
+    fun showArea(shape: List<GeoPolygon>, zoomIn: Boolean = true) {
         val bounds = shape.bounds() ?: return
-        _state.update { it.copy(cameraRequest = CameraRequest.ShowArea(it.nextCameraId(), bounds)) }
+        _state.update { it.copy(cameraRequest = CameraRequest.ShowArea(it.nextCameraId(), bounds, zoomIn)) }
     }
 
     /** Przenieś mapę do miejsca (np. wsi) na zoomie, przy którym widać granice działek. */

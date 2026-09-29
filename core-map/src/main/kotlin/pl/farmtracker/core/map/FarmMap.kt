@@ -226,13 +226,15 @@ internal fun FarmMap(
             is CameraRequest.ShowArea -> {
                 mapLibreMap.stopFollowingMe()
                 val bounds = cameraRequest.bounds
-                mapLibreMap.easeCamera(
-                    CameraUpdateFactory.newLatLngBounds(
-                        LatLngBounds.from(bounds.north, bounds.east, bounds.south, bounds.west),
-                        areaPaddingPx,
-                    ),
-                    SHOW_AREA_DURATION_MS,
-                )
+                val latLngBounds = LatLngBounds.from(bounds.north, bounds.east, bounds.south, bounds.west)
+                val fitted = mapLibreMap.getCameraForLatLngBounds(latLngBounds, IntArray(4) { areaPaddingPx })
+                val fittedTarget = fitted?.target
+                val update = if (cameraRequest.zoomIn || fitted == null || fittedTarget == null) {
+                    CameraUpdateFactory.newLatLngBounds(latLngBounds, areaPaddingPx)
+                } else {
+                    CameraUpdateFactory.newLatLngZoom(fittedTarget, minOf(fitted.zoom, mapLibreMap.cameraPosition.zoom))
+                }
+                mapLibreMap.easeCamera(update, SHOW_AREA_DURATION_MS)
             }
             null -> Unit
         }

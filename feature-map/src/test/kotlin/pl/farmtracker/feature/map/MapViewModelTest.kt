@@ -2,13 +2,16 @@ package pl.farmtracker.feature.map
 
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.geo.GeoBounds
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
@@ -52,6 +55,18 @@ class MapViewModelTest {
 
         assertEquals(listOf(tapPoint), parcels.requests)
         assertEquals(parcel, selection.selectedParcel)
+    }
+
+    @Test
+    fun `tapping a parcel moves the map onto it without zooming in`() {
+        parcels.result = ParcelLookup.Found(parcel)
+        showParcelsZoomedIn()
+
+        viewModel.onMapTapped(tapPoint)
+
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+        assertEquals(GeoBounds(south = 50.98, west = 17.42, north = 50.99, east = 17.43), request.bounds)
+        assertFalse(request.zoomIn)
     }
 
     @Test

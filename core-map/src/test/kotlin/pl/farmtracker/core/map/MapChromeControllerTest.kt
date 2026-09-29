@@ -31,6 +31,26 @@ class MapChromeControllerTest {
     }
 
     @Test
+    fun `a view asked for before the map opens is kept instead of centering on me`() {
+        val field = listOf(GeoPolygon(listOf(GeoPoint(50.0, 17.0), GeoPoint(50.0, 17.01), GeoPoint(50.01, 17.01))))
+        chrome.showArea(field)
+
+        chrome.onStart(hasLocationPermission = true)
+
+        assertEquals(LocationAccess.GRANTED, state.locationAccess)
+        assertTrue(state.cameraRequest is CameraRequest.ShowArea)
+    }
+
+    @Test
+    fun `a tapped area only pans the map without zooming in`() {
+        val parcel = listOf(GeoPolygon(listOf(GeoPoint(50.0, 17.0), GeoPoint(50.0, 17.01), GeoPoint(50.01, 17.01))))
+
+        chrome.showArea(parcel, zoomIn = false)
+
+        assertEquals(false, (state.cameraRequest as CameraRequest.ShowArea).zoomIn)
+    }
+
+    @Test
     fun `without permission the map asks once`() {
         chrome.onStart(hasLocationPermission = false)
         assertTrue(state.askForLocation)

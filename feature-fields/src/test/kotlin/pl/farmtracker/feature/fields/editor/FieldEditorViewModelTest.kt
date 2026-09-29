@@ -15,6 +15,7 @@ import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.Place
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.domain.geo.bounds
 import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
@@ -86,6 +87,15 @@ class FieldEditorViewModelTest {
 
         assertTrue(state.parcels.isEmpty())
         assertTrue(parcels.requests.isEmpty())
+    }
+
+    @Test
+    fun `a tapped parcel is brought fully on screen without zooming in`() {
+        tap(north, inNorth)
+
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+        assertEquals(north.shape.bounds(), request.bounds)
+        assertFalse(request.zoomIn)
     }
 
     @Test
@@ -340,6 +350,18 @@ class FieldEditorViewModelTest {
         assertEquals(FieldColor.CYAN, state.color)
         assertEquals(existing.shape, state.fieldShape)
         assertFalse(state.loadingField)
+    }
+
+    @Test
+    fun `marking the entry of an edited field shows that field, not my location`() = runTest {
+        fields.save(existing)
+        val edit = editor(fieldId = "f-1")
+
+        edit.openEntry()
+        edit.chrome.onStart(hasLocationPermission = true) // mapa pokazuje się dopiero w tym kroku
+
+        val request = edit.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+        assertEquals(existing.shape.bounds(), request.bounds)
     }
 
     @Test
