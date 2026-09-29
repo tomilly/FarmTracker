@@ -8,6 +8,8 @@ import pl.farmtracker.core.domain.geo.GeoBounds
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.domain.geo.bounds
+import kotlin.math.cos
+import kotlin.math.pow
 
 enum class BaseLayer { MAP, PHOTO }
 
@@ -49,9 +51,21 @@ data class MapChromeState(
 
     val showParcelsZoomHint: Boolean get() = showParcels && !parcelsVisible
 
+    /**
+     * Ile metrów w terenie przykrywa opuszek palca przy obecnym zoomie – żeby dotknięcie trafiało
+     * w mały znak na mapie (np. wjazd) tak samo przy bliskim, jak i oddalonym widoku.
+     */
+    fun fingerMeters(latitude: Double): Double =
+        FINGER_DP * METERS_PER_DP_AT_ZOOM_0 * cos(Math.toRadians(latitude)) / 2.0.pow(zoom)
+
     companion object {
         /** Cała Polska na ekranie. */
         const val INITIAL_ZOOM = 5.5
+
+        private const val FINGER_DP = 32.0
+
+        /** Równik przy zoomie 0 w MapLibre (kafle 512 px): obwód Ziemi / 512. */
+        private const val METERS_PER_DP_AT_ZOOM_0 = 78_271.517
     }
 }
 

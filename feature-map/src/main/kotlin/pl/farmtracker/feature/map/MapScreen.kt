@@ -73,7 +73,7 @@ fun MapScreen(
         overlays = MapOverlays(
             fields = fields,
             highlight = selectedField?.shape ?: selection.selectedParcel?.shape.orEmpty(),
-            entryPoints = fields.mapNotNull { it.entryPoint },
+            entryPoints = fields.flatMap { it.entryPoints },
         ),
         modifier = modifier,
     ) {

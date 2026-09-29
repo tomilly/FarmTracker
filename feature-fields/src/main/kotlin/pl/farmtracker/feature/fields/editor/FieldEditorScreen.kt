@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +70,7 @@ import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
 import pl.farmtracker.feature.fields.common.ColorPicker
+import pl.farmtracker.feature.fields.common.entriesCount
 
 @Composable
 fun FieldEditorScreen(
@@ -132,7 +134,7 @@ fun FieldEditorScreen(
                 onNameChanged = viewModel::onNameChanged,
                 onColorSelected = viewModel::onColorSelected,
                 onMarkEntry = viewModel::openEntry,
-                onRemoveEntry = viewModel::clearEntry,
+                onRemoveEntry = viewModel::clearEntries,
                 onSave = viewModel::save,
                 onDelete = viewModel::delete,
                 modifier = modifier,
@@ -149,12 +151,12 @@ fun FieldEditorScreen(
                 overlays = MapOverlays(
                     fields = existingFields,
                     highlight = uiState.fieldShape,
-                    entryPoints = listOfNotNull(uiState.entryPoint),
+                    entryPoints = uiState.entryPoints,
                 ),
                 modifier = modifier,
                 showParcelsToggle = false,
             ) {
-                EntryPanel(uiState = uiState, onDone = viewModel::closeEntry)
+                EntryPanel(uiState = uiState, onUndo = viewModel::undoEntry, onDone = viewModel::closeEntry)
             }
         }
     }
@@ -323,7 +325,7 @@ private sealed interface SummaryDetail {
 
 /** „2 działki / ok. 12,40 ha" albo „4 rogi / ok. 3,10 ha" + „Cofnij" ostatniego kroku. */
 @Composable
-private fun ShapeSummary(title: String, detail: SummaryDetail, onUndo: () -> Unit) {
+private fun ShapeSummary(title: String, detail: SummaryDetail, onUndo: () -> Unit, icon: ImageVector = Icons.Filled.Grass) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -334,7 +336,7 @@ private fun ShapeSummary(title: String, detail: SummaryDetail, onUndo: () -> Uni
             modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Grass, contentDescription = null, modifier = Modifier.size(32.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -363,11 +365,18 @@ private fun ShapeSummary(title: String, detail: SummaryDetail, onUndo: () -> Uni
 }
 
 @Composable
-private fun EntryPanel(uiState: FieldEditorUiState, onDone: () -> Unit) {
-    if (uiState.entryPoint == null) {
-        StatusPill(text = stringResource(R.string.fields_entry_hint), icon = Icons.Filled.TouchApp)
-    } else {
-        StatusPill(text = stringResource(R.string.fields_entry_set), icon = Icons.Filled.CheckCircle, tone = Tone.Go)
+private fun EntryPanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onDone: () -> Unit) {
+    MessageSlot {
+        if (uiState.entryPoints.isEmpty()) {
+            StatusPill(text = stringResource(R.string.fields_entry_hint), icon = Icons.Filled.TouchApp)
+        } else {
+            ShapeSummary(
+                title = entriesCount(uiState.entryPoints.size),
+                detail = SummaryDetail.Note(stringResource(R.string.fields_entry_more)),
+                onUndo = onUndo,
+                icon = Icons.Filled.Fence,
+            )
+        }
     }
     BigActionButton(
         text = stringResource(R.string.fields_entry_done),
@@ -432,20 +441,19 @@ internal fun FieldDetailsStep(
         )
 
         Text(stringResource(R.string.fields_entry_section), style = MaterialTheme.typography.titleMedium)
-        if (uiState.entryPoint != null) {
-            StatusPill(text = stringResource(R.string.fields_entry_set), icon = Icons.Filled.CheckCircle, tone = Tone.Go)
+        val hasEntries = uiState.entryPoints.isNotEmpty()
+        if (hasEntries) {
+            StatusPill(text = entriesCount(uiState.entryPoints.size), icon = Icons.Filled.CheckCircle, tone = Tone.Go)
         }
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BigActionButton(
-                text = stringResource(
-                    if (uiState.entryPoint == null) R.string.fields_entry_mark else R.string.fields_entry_change,
-                ),
+                text = stringResource(if (hasEntries) R.string.fields_entry_change else R.string.fields_entry_mark),
                 icon = Icons.Filled.Fence,
                 onClick = onMarkEntry,
                 tone = Tone.Neutral,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
-            if (uiState.entryPoint != null) {
+            if (hasEntries) {
                 BigActionButton(
                     text = stringResource(R.string.fields_entry_remove),
                     icon = Icons.Filled.Delete,
@@ -542,7 +550,7 @@ private fun FieldDetailsPreview() {
                 parcels = listOf(PreviewParcel),
                 name = "Bystrzyca 2285",
                 color = FieldColor.ORANGE,
-                entryPoint = GeoPoint(50.95, 17.355),
+                entryPoints = listOf(GeoPoint(50.95, 17.355), GeoPoint(50.955, 17.36)),
             ),
             onBack = {},
             onNameChanged = {},

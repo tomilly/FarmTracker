@@ -39,7 +39,7 @@ class DataStoreFieldRepositoryTest {
             ),
         ),
         parcelIds = listOf("160802_2.0012.345"),
-        entryPoint = GeoPoint(50.0, 17.005),
+        entryPoints = listOf(GeoPoint(50.0, 17.005), GeoPoint(50.01, 17.005)),
         status = FieldStatus.ACTIVE,
         order = 2,
     )
@@ -87,5 +87,16 @@ class DataStoreFieldRepositoryTest {
         fileSystem.write(path) { writeUtf8("to nie jest json") }
 
         assertTrue(createRepository().fields.first().isEmpty())
+    }
+
+    @Test
+    fun `a file from before several entries keeps its single entry`() = runTest {
+        fileSystem.write(path) {
+            writeUtf8(
+                """{"fields":[{"id":"f1","name":"Stare","color":"BLUE","polygons":[],"entry":{"lat":50.0,"lon":17.0}}]}""",
+            )
+        }
+
+        assertEquals(listOf(GeoPoint(50.0, 17.0)), createRepository().fields.first().single().entryPoints)
     }
 }

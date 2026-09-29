@@ -14,7 +14,7 @@ enum class FieldStatus { PLANNED, ACTIVE, DONE }
  * Pole do zbioru (BRIEF §8). Kształt to jedna lub więcej działek (albo narysowany wielokąt).
  *
  * @param parcelIds identyfikatory działek ULDK, z których powstało pole (puste dla narysowanego)
- * @param entryPoint wjazd na pole (brama) – do nawigacji kierowców
+ * @param entryPoints wjazdy na pole (bramy) – do nawigacji kierowców; może ich być kilka albo żaden
  */
 data class Field(
     val id: String,
@@ -22,7 +22,7 @@ data class Field(
     val color: FieldColor,
     val shape: List<GeoPolygon>,
     val parcelIds: List<String> = emptyList(),
-    val entryPoint: GeoPoint? = null,
+    val entryPoints: List<GeoPoint> = emptyList(),
     val status: FieldStatus = FieldStatus.PLANNED,
     val order: Int = 0,
 ) {

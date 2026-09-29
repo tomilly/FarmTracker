@@ -34,6 +34,7 @@ import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.ui.FieldColorUi
 import pl.farmtracker.core.ui.format.formatHectares
+import pl.farmtracker.core.ui.format.pluralStringPl
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
@@ -129,3 +130,12 @@ private fun ColorPickerPreview() {
         }
     }
 }
+
+/** „1 wjazd", „2 wjazdy", „5 wjazdów". */
+@Composable
+internal fun entriesCount(count: Int): String = pluralStringPl(
+    R.string.fields_entries_one,
+    R.string.fields_entries_few,
+    R.string.fields_entries_many,
+    count,
+)

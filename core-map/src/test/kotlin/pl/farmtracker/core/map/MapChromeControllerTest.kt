@@ -51,6 +51,16 @@ class MapChromeControllerTest {
     }
 
     @Test
+    fun `a finger covers fewer meters the closer the map is`() {
+        val close = MapChromeState(zoom = 17.0).fingerMeters(latitude = 0.0)
+        val far = MapChromeState(zoom = 15.0).fingerMeters(latitude = 0.0)
+
+        assertEquals(19.1, close, 0.1) // 32 dp × 0,6 m
+        assertEquals(4 * close, far, 0.001)
+        assertTrue(MapChromeState(zoom = 17.0).fingerMeters(latitude = 51.0) < close) // bliżej bieguna – mniej metrów
+    }
+
+    @Test
     fun `without permission the map asks once`() {
         chrome.onStart(hasLocationPermission = false)
         assertTrue(state.askForLocation)

@@ -35,6 +35,7 @@ import pl.farmtracker.core.ui.format.formatHectares
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
 import pl.farmtracker.feature.fields.common.ColorDot
+import pl.farmtracker.feature.fields.common.entriesCount
 
 /** Pole na mapie; stąd wchodzi się w edycję, widząc pole przed sobą. Dotknięcie innego pola przełącza na nie. */
 @Composable
@@ -59,7 +60,7 @@ fun FieldScreen(
                 fields = state.allFields,
                 // Bieżące pole wyróżnione – po przełączeniu dotykiem widać, które jest teraz pokazane.
                 highlight = state.field.shape,
-                entryPoints = state.allFields.mapNotNull { it.entryPoint },
+                entryPoints = state.allFields.flatMap { it.entryPoints },
             ),
             modifier = modifier,
         ) {
@@ -96,7 +97,7 @@ private fun FieldSummary(field: Field) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = stringResource(if (field.entryPoint != null) R.string.fields_entry_set else R.string.fields_entry_missing),
+                    text = if (field.entryPoints.isEmpty()) stringResource(R.string.fields_entry_missing) else entriesCount(field.entryPoints.size),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

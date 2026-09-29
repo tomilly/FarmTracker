@@ -28,6 +28,8 @@ internal data class StoredField(
     val color: String,
     val polygons: List<StoredPolygon>,
     val parcelIds: List<String> = emptyList(),
+    val entries: List<StoredPoint> = emptyList(),
+    /** Dawny zapis jednego wjazdu – tylko do odczytu starszych plików. */
     val entry: StoredPoint? = null,
     val status: String = FieldStatus.PLANNED.name,
     val order: Int = 0,
@@ -47,7 +49,7 @@ internal fun Field.toStored() = StoredField(
         StoredPolygon(outer = polygon.outer.map { it.toStored() }, holes = polygon.holes.map { hole -> hole.map { it.toStored() } })
     },
     parcelIds = parcelIds,
-    entry = entryPoint?.toStored(),
+    entries = entryPoints.map { it.toStored() },
     status = status.name,
     order = order,
 )
@@ -60,7 +62,7 @@ internal fun StoredField.toDomain() = Field(
         GeoPolygon(outer = polygon.outer.map { it.toDomain() }, holes = polygon.holes.map { hole -> hole.map { it.toDomain() } })
     },
     parcelIds = parcelIds,
-    entryPoint = entry?.toDomain(),
+    entryPoints = entries.ifEmpty { listOfNotNull(entry) }.map { it.toDomain() },
     status = FieldStatus.entries.firstOrNull { it.name == status } ?: FieldStatus.PLANNED,
     order = order,
 )

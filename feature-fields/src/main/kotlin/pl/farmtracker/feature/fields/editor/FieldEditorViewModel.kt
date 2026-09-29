@@ -73,7 +73,8 @@ data class FieldEditorUiState(
     val search: SearchState = SearchState.Idle,
     val name: String = "",
     val color: FieldColor = FieldColor.BLUE,
-    val entryPoint: GeoPoint? = null,
+    /** Wjazdy na pole, w kolejności zaznaczania (ostatni = do „Cofnij"). */
+    val entryPoints: List<GeoPoint> = emptyList(),
     /** Domyślna nazwa i kolor ustawiane tylko przy pierwszym wejściu do formularza. */
     val detailsPrefilled: Boolean = false,
     /** Edytowane istniejące pole (`null` przy tworzeniu nowego). */
@@ -129,7 +130,7 @@ class FieldEditorViewModel @Inject constructor(
                         editing = field,
                         name = field.name,
                         color = field.color,
-                        entryPoint = field.entryPoint,
+                        entryPoints = field.entryPoints,
                         detailsPrefilled = true,
                         loadingField = false,
                     )
@@ -160,7 +161,7 @@ class FieldEditorViewModel @Inject constructor(
     fun onMapTapped(point: GeoPoint) {
         val state = _uiState.value
         when {
-            state.step == EditorStep.ENTRY -> _uiState.update { it.copy(entryPoint = point) }
+            state.step == EditorStep.ENTRY -> toggleEntryAt(point)
             state.step != EditorStep.SHAPE -> Unit
             state.shapeMode == ShapeMode.DRAW -> _uiState.update { it.copy(drawnPoints = it.drawnPoints + point) }
             chrome.state.value.parcelsVisible -> toggleParcelAt(point)
@@ -330,7 +331,7 @@ class FieldEditorViewModel @Inject constructor(
 
     fun onColorSelected(color: FieldColor) = _uiState.update { it.copy(color = color) }
 
-    /** Zaznaczanie wjazdu na mapie – mapa pokazuje całe nowe pole. */
+    /** Zaznaczanie wjazdów na mapie – mapa pokazuje całe pole. */
     fun openEntry() {
         _uiState.update { it.copy(step = EditorStep.ENTRY) }
         chrome.showArea(_uiState.value.fieldShape)
@@ -338,7 +339,23 @@ class FieldEditorViewModel @Inject constructor(
 
     fun closeEntry() = _uiState.update { it.copy(step = EditorStep.DETAILS) }
 
-    fun clearEntry() = _uiState.update { it.copy(entryPoint = null) }
+    /**
+     * Dotknięcie mapy dodaje kolejny wjazd; dotknięcie istniejącego (w zasięgu palca przy obecnym
+     * zoomie) – usuwa go. Bez osobnego trybu „usuń".
+     */
+    private fun toggleEntryAt(point: GeoPoint) {
+        val reach = chrome.state.value.fingerMeters(point.latitude)
+        _uiState.update { state ->
+            val touched = state.entryPoints.minByOrNull { it.distanceMetersTo(point) }
+                ?.takeIf { it.distanceMetersTo(point) <= reach }
+            state.copy(entryPoints = if (touched != null) state.entryPoints - touched else state.entryPoints + point)
+        }
+    }
+
+    /** „Cofnij" – usuwa ostatnio zaznaczony wjazd. */
+    fun undoEntry() = _uiState.update { it.copy(entryPoints = it.entryPoints.dropLast(1)) }
+
+    fun clearEntries() = _uiState.update { it.copy(entryPoints = emptyList()) }
 
     fun save() {
         val state = _uiState.value
@@ -347,14 +364,14 @@ class FieldEditorViewModel @Inject constructor(
             val field = state.editing?.copy(
                 name = state.name.trim(),
                 color = state.color,
-                entryPoint = state.entryPoint,
+                entryPoints = state.entryPoints,
             ) ?: Field(
                 id = UUID.randomUUID().toString(),
                 name = state.name.trim(),
                 color = state.color,
                 shape = state.fieldShape,
                 parcelIds = if (state.shapeMode == ShapeMode.PARCELS) state.parcels.map { it.id } else emptyList(),
-                entryPoint = state.entryPoint,
+                entryPoints = state.entryPoints,
                 order = (fieldRepository.fields.first().maxOfOrNull { it.order } ?: -1) + 1,
             )
             fieldRepository.save(field)

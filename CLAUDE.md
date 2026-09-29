@@ -45,7 +45,7 @@ Adresy usług: `feature-map/.../MapSources.kt`, ULDK: `data/.../parcel/UldkParce
 Geometria (WKT, powierzchnia) w `core-domain/.../geo`.
 M2 gotowe (`feature-fields`, zapis lokalny w DataStore JSON – `data/.../field`): lista pól (admin → „Pola"),
 nowe pole z działek (dotyk / wieś „sulmow" przez Nominatim OSM / numer „Otusz 125" przez ULDK) albo narysowane
-po rogach → nazwa, kolor, wjazd → zapis; działka może należeć tylko do jednego pola;
+po rogach → nazwa, kolor, wjazdy (kilka; dotknięcie wjazdu usuwa) → zapis; działka może należeć tylko do jednego pola;
 dotknięcie pola na liście → pole na mapie (`FieldScreen`, dotknięcie innego pola przełącza) → „Edytuj pole";
 na głównej mapie dotknięcie pola pokazuje kartę pola (admin: „Edytuj pole"); usuwanie z „Cofnij" (`DeletedFieldBin`);
 pola i wjazdy widoczne na mapie każdej roli.

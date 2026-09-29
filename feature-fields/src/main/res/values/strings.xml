@@ -53,14 +53,17 @@
     <string name="fields_delete">Usuń pole</string>
     <string name="fields_deleted">Usunięto pole „%1$s”</string>
 
-    <!-- Wjazd -->
-    <string name="fields_entry_section">Wjazd na pole (można pominąć)</string>
-    <string name="fields_entry_mark">Zaznacz wjazd na mapie</string>
-    <string name="fields_entry_change">Zmień wjazd</string>
-    <string name="fields_entry_set">Wjazd zaznaczony</string>
+    <!-- Wjazdy -->
+    <string name="fields_entry_section">Wjazdy na pole (można pominąć)</string>
+    <string name="fields_entry_mark">Zaznacz wjazdy na mapie</string>
+    <string name="fields_entry_change">Zmień wjazdy</string>
     <string name="fields_entry_missing">Wjazd nie zaznaczony</string>
-    <string name="fields_entry_remove">Usuń wjazd</string>
-    <string name="fields_entry_title">Wjazd na pole</string>
+    <string name="fields_entry_remove">Usuń wjazdy</string>
+    <string name="fields_entry_title">Wjazdy na pole</string>
     <string name="fields_entry_hint">Dotknij miejsca, gdzie wjeżdża się na pole</string>
+    <string name="fields_entry_more">Dotknij, by dodać kolejny, albo wjazdu, by go usunąć</string>
     <string name="fields_entry_done">Gotowe</string>
+    <string name="fields_entries_one">%1$d wjazd</string>
+    <string name="fields_entries_few">%1$d wjazdy</string>
+    <string name="fields_entries_many">%1$d wjazdów</string>
 </resources>

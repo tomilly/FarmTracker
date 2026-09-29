@@ -299,22 +299,45 @@ class FieldEditorViewModelTest {
     }
 
     @Test
-    fun `entry point is marked on the map and saved with the field`() = runTest {
+    fun `several entries are marked on the map and saved with the field`() = runTest {
         tap(north, inNorth)
         viewModel.goToDetails()
         val gate = GeoPoint(50.0101, 17.0001)
+        val backGate = GeoPoint(50.0199, 17.0099)
 
         viewModel.openEntry()
         assertTrue(viewModel.chrome.state.value.cameraRequest is CameraRequest.ShowArea)
         viewModel.onMapTapped(gate)
+        viewModel.onMapTapped(backGate)
         viewModel.closeEntry()
 
         assertEquals(EditorStep.DETAILS, state.step)
-        assertEquals(gate, state.entryPoint)
+        assertEquals(listOf(gate, backGate), state.entryPoints)
         assertEquals(listOf(north), state.parcels) // dotknięcie wjazdu nie zmienia działek
 
         viewModel.save()
-        assertEquals(gate, fields.fields.first().single().entryPoint)
+        assertEquals(listOf(gate, backGate), fields.fields.first().single().entryPoints)
+    }
+
+    @Test
+    fun `tapping an entry again removes it, undo drops the last one`() {
+        tap(north, inNorth)
+        viewModel.goToDetails()
+        val gate = GeoPoint(50.0101, 17.0001)
+        val backGate = GeoPoint(50.0199, 17.0099)
+        viewModel.openEntry()
+        viewModel.onMapTapped(gate)
+        viewModel.onMapTapped(backGate)
+
+        viewModel.onMapTapped(GeoPoint(50.01019, 17.0001)) // ok. 10 m obok – pod palcem
+        assertEquals(listOf(backGate), state.entryPoints)
+
+        viewModel.onMapTapped(gate)
+        viewModel.undoEntry()
+        assertEquals(listOf(backGate), state.entryPoints)
+
+        viewModel.clearEntries()
+        assertTrue(state.entryPoints.isEmpty())
     }
 
     @Test

@@ -43,7 +43,7 @@ class FieldViewModelTest {
     fun `changes from editing show up without moving the map again`() = runTest {
         val framing = viewModel.chrome.state.value.cameraRequest
 
-        val renamed = field.copy(name = "Za lasem duże", entryPoint = GeoPoint(50.0, 17.0))
+        val renamed = field.copy(name = "Za lasem duże", entryPoints = listOf(GeoPoint(50.0, 17.0)))
         fields.save(renamed)
 
         assertEquals(renamed, (viewModel.uiState.value as FieldViewUiState.Shown).field)
