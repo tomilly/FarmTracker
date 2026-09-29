@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Lista -->
+    <string name="team_title">Ludzie</string>
+    <string name="team_invite_section">Zaproś do zbioru</string>
+    <string name="team_invite_driver">Zaproś kierowcę</string>
+    <string name="team_invite_harvester">Zaproś sieczkarnię</string>
+    <string name="team_invite_base">Zaproś bazę</string>
+    <string name="team_inviting">Tworzę zaproszenie…</string>
+    <string name="team_invite_failed">Brak zasięgu – zaproszenie nie powstało. Spróbuj jeszcze raz.</string>
+    <string name="team_people_section">W zbiorze</string>
+    <string name="team_me">%1$s (Ty)</string>
+    <string name="team_removed">Usunięto: %1$s</string>
+    <string name="team_undo">Cofnij</string>
+
+    <!-- Zaproszenie -->
+    <string name="team_invite_title">Zaproszenie</string>
+    <string name="team_invite_for">Dla roli: %1$s</string>
+    <string name="team_invite_code_label">Kod do wpisania w aplikacji:</string>
+    <string name="team_invite_valid">Kod działa przez 7 dni.</string>
+    <string name="team_invite_share">Wyślij SMS-em lub WhatsAppem</string>
+    <string name="team_invite_share_text">Zapraszam do zbioru „%1$s” w aplikacji FarmTracker jako: %2$s. Zaloguj się numerem telefonu i wpisz kod zaproszenia: %3$s</string>
+    <string name="team_invite_done">Gotowe</string>
+
+    <!-- Osoba -->
+    <string name="team_member_role">Rola</string>
+    <string name="team_member_remove">Usuń ze zbioru</string>
+    <string name="team_member_last_admin">To jedyny admin – najpierw daj rolę admina komuś innemu</string>
+    <string name="team_member_is_you">To Ty – siebie nie usuniesz</string>
+</resources>
