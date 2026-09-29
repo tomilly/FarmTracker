@@ -83,7 +83,16 @@ internal fun DriverContent(
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    RoleScaffold(role = Role.DRIVER, onSwitchRole = onSwitchRole, modifier = modifier) {
+    RoleScaffold(
+        role = Role.DRIVER,
+        onSwitchRole = onSwitchRole,
+        modifier = modifier,
+        bottomAction = if (uiState.isWorking) {
+            { StopWorkButton(onStopWork = onStopWork) }
+        } else {
+            null
+        },
+    ) {
         if (uiState.isWorking) {
             MyPositionPills(uiState.position)
         } else {
@@ -125,8 +134,6 @@ internal fun DriverContent(
         }
 
         OpenMapButton(onClick = onOpenMap)
-
-        if (uiState.isWorking) StopWorkButton(onStopWork = onStopWork)
     }
 }
 

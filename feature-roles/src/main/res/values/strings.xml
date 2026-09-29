@@ -8,6 +8,10 @@
     <string name="roles_not_working">Nie pracujesz – nikt nie widzi, gdzie jesteś</string>
     <string name="roles_start_work">Zaczynam pracę</string>
     <string name="roles_stop_work">Kończę pracę</string>
+    <string name="roles_stop_work_question">Skończyć pracę?</string>
+    <string name="roles_stop_work_explanation">Inni przestaną widzieć, gdzie jesteś.</string>
+    <string name="roles_stop_work_confirm">Tak, kończę</string>
+    <string name="roles_stop_work_cancel">Pracuję dalej</string>
     <string name="roles_location_shared">Pracujesz – inni widzą, gdzie jesteś</string>
     <string name="roles_location_denied">Bez zgody na lokalizację inni Cię nie zobaczą</string>
     <string name="roles_open_settings">Otwórz ustawienia</string>

@@ -140,6 +140,7 @@ fun FarmTrackerScaffold(
  * Ekran roli: w pasku zawsze widać, kim jestem (ikona + nazwa roli) – test „trunk test" (BRIEF §4).
  *
  * @param onSwitchRole gdy nie `null`, w pasku pojawia się „Zmień rolę" (tymczasowo, tylko w wersji debug).
+ * @param bottomAction przycisk przyklejony do dołu ekranu (np. „Kończę pracę") – z dala od głównych przycisków
  */
 @Composable
 fun RoleScaffold(
@@ -147,6 +148,7 @@ fun RoleScaffold(
     modifier: Modifier = Modifier,
     onSwitchRole: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    bottomAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     FarmTrackerScaffold(
@@ -154,6 +156,7 @@ fun RoleScaffold(
         icon = RoleUi.icon(role),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        bottomAction = bottomAction,
         actions = {
             if (onSwitchRole != null) {
                 TextButton(

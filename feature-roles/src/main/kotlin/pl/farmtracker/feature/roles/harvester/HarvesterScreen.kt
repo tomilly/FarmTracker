@@ -52,7 +52,16 @@ internal fun HarvesterContent(
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    RoleScaffold(role = Role.HARVESTER, onSwitchRole = onSwitchRole, modifier = modifier) {
+    RoleScaffold(
+        role = Role.HARVESTER,
+        onSwitchRole = onSwitchRole,
+        modifier = modifier,
+        bottomAction = if (uiState.isWorking) {
+            { StopWorkButton(onStopWork = onStopWork) }
+        } else {
+            null
+        },
+    ) {
         if (uiState.isWorking) {
             MyPositionPills(uiState.position)
         } else {
@@ -64,8 +73,6 @@ internal fun HarvesterContent(
 
         Text(stringResource(R.string.roles_drivers_title), style = MaterialTheme.typography.titleMedium)
         CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
-
-        if (uiState.isWorking) StopWorkButton(onStopWork = onStopWork)
     }
 }
 
