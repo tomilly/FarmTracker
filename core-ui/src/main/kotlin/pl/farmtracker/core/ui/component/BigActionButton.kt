@@ -77,7 +77,11 @@ fun BigActionButton(
             enabled = enabled,
             shape = MaterialTheme.shapes.medium,
             border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+            // Pełne tło – przycisk bywa położony na mapie albo zdjęciu lotniczym.
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
             contentPadding = ButtonContentPadding,
             content = content,
         )

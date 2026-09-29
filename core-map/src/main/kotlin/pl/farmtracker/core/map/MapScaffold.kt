@@ -8,18 +8,25 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Map
@@ -36,13 +43,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -61,9 +73,13 @@ private val LocationPermissions = arrayOf(
     Manifest.permission.ACCESS_COARSE_LOCATION,
 )
 
+private val OverlayPadding = 12.dp
+private val OverlaySpacing = 12.dp
+
 /**
- * Wspólny ekran z mapą: górny pasek z „Wróć", mapa, „Gdzie jestem", zgoda na lokalizację
- * i przyciski warstw na dole. Ekran dokłada własną treść w [panel] – nad przyciskami warstw.
+ * Wspólny ekran z mapą: górny pasek z „Wróć", mapa na całą resztę ekranu, a na niej: warstwy u góry,
+ * „Gdzie jestem" i treść ekranu ([panel]) na dole. Kamera wie, ile mapy zasłaniają przyciski,
+ * więc pokazywane pola i działki trafiają w odkrytą część.
  */
 @Composable
 fun MapScaffold(
@@ -96,32 +112,148 @@ fun MapScaffold(
         }
     }
 
+    // Ile pikseli mapy zasłaniają przyciski u góry i na dole (razem z „Gdzie jestem").
+    var coveredTop by remember { mutableIntStateOf(0) }
+    var coveredBottom by remember { mutableIntStateOf(0) }
+
     Scaffold(
         modifier = modifier,
         topBar = { FarmTrackerTopBar(title = title, icon = icon, onBack = onBack) },
     ) { innerPadding ->
-        Column(Modifier.fillMaxSize().padding(innerPadding)) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                FarmMap(
-                    chrome = chromeState,
-                    overlays = overlays,
-                    onCameraIdle = chrome::onCameraIdle,
-                    onMapTap = onMapTap,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                WhereAmIButton(
-                    onClick = chrome::onWhereAmIClicked,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(FarmTrackerDimens.ScreenPadding),
-                )
-            }
-            MapBottomPanel(
+        // Mapa sięga do dołu ekranu (pod pasek nawigacji systemu); przyciski go omijają.
+        Box(Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {
+            FarmMap(
+                chrome = chromeState,
+                overlays = overlays,
+                covered = MapCovered(top = coveredTop, bottom = coveredBottom),
+                onCameraIdle = chrome::onCameraIdle,
+                onMapTap = onMapTap,
+                modifier = Modifier.fillMaxSize(),
+            )
+            MapLayerBar(
                 chrome = chromeState,
                 onSelectBaseLayer = chrome::selectBaseLayer,
                 onToggleParcels = chrome::toggleParcels,
-                onOpenSettings = { context.openAppSettings() },
                 showParcelsToggle = showParcelsToggle,
-                panel = panel,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .onSizeChanged { coveredTop = it.height }
+                    .padding(OverlayPadding),
             )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .onSizeChanged { coveredBottom = it.height }
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(OverlayPadding),
+                verticalArrangement = Arrangement.spacedBy(OverlaySpacing),
+            ) {
+                WhereAmIButton(onClick = chrome::onWhereAmIClicked, modifier = Modifier.align(Alignment.End))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(OverlaySpacing),
+                ) {
+                    MapHints(chrome = chromeState, onOpenSettings = { context.openAppSettings() })
+                    panel()
+                }
+            }
+        }
+    }
+}
+
+/** Komunikaty mapy (brak zgody na lokalizację, za daleko na działki) – nad treścią ekranu. */
+@Composable
+private fun ColumnScope.MapHints(chrome: MapChromeState, onOpenSettings: () -> Unit) {
+    if (chrome.locationAccess == LocationAccess.DENIED) {
+        StatusPill(
+            text = stringResource(R.string.core_map_location_denied),
+            icon = Icons.Filled.LocationOff,
+            tone = Tone.Warning,
+        )
+        BigActionButton(
+            text = stringResource(R.string.core_map_open_settings),
+            icon = Icons.Filled.Settings,
+            onClick = onOpenSettings,
+            tone = Tone.Neutral,
+        )
+    }
+    if (chrome.showParcelsZoomHint) {
+        StatusPill(
+            text = stringResource(R.string.core_map_parcels_zoom_hint),
+            icon = Icons.Filled.ZoomIn,
+            tone = Tone.Warning,
+        )
+    }
+}
+
+/** Warstwy w jednym rzędzie u góry mapy: „Mapa" / „Zdjęcie" i włącznik „Działki". */
+@Composable
+internal fun MapLayerBar(
+    chrome: MapChromeState,
+    onSelectBaseLayer: (BaseLayer) -> Unit,
+    onToggleParcels: () -> Unit,
+    modifier: Modifier = Modifier,
+    showParcelsToggle: Boolean = true,
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MapChip(
+            text = stringResource(R.string.core_map_layer_map),
+            icon = Icons.Filled.Map,
+            isSelected = chrome.baseLayer == BaseLayer.MAP,
+            onClick = { onSelectBaseLayer(BaseLayer.MAP) },
+            modifier = Modifier.weight(1f),
+        )
+        MapChip(
+            text = stringResource(R.string.core_map_layer_photo),
+            icon = Icons.Filled.Satellite,
+            isSelected = chrome.baseLayer == BaseLayer.PHOTO,
+            onClick = { onSelectBaseLayer(BaseLayer.PHOTO) },
+            modifier = Modifier.weight(1f),
+        )
+        if (showParcelsToggle) {
+            MapChip(
+                text = stringResource(R.string.core_map_parcels),
+                icon = if (chrome.showParcels) Icons.Filled.CheckCircle else Icons.Filled.GridOn,
+                isSelected = chrome.showParcels,
+                onClick = onToggleParcels,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/**
+ * Przycisk na mapie: nieprzezroczysty i z cieniem – czytelny na zdjęciu lotniczym.
+ * Włączony = wypełniony kolorem, wyłączony = biały z obrysem.
+ */
+@Composable
+private fun MapChip(
+    text: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget).semantics { selected = isSelected },
+        shape = MaterialTheme.shapes.medium,
+        color = if (isSelected) colors.primary else colors.surface,
+        contentColor = if (isSelected) colors.onPrimary else colors.onSurface,
+        border = if (isSelected) null else BorderStroke(2.dp, colors.outline),
+        shadowElevation = 4.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(text = text, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -139,89 +271,6 @@ private fun WhereAmIButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     )
 }
 
-@Composable
-internal fun MapBottomPanel(
-    chrome: MapChromeState,
-    onSelectBaseLayer: (BaseLayer) -> Unit,
-    onToggleParcels: () -> Unit,
-    onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-    showParcelsToggle: Boolean = true,
-    panel: @Composable ColumnScope.() -> Unit = {},
-) {
-    Surface(modifier = modifier.fillMaxWidth(), shadowElevation = 8.dp) {
-        Column(
-            modifier = Modifier.padding(FarmTrackerDimens.ScreenPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (chrome.locationAccess == LocationAccess.DENIED) {
-                StatusPill(
-                    text = stringResource(R.string.core_map_location_denied),
-                    icon = Icons.Filled.LocationOff,
-                    tone = Tone.Warning,
-                )
-                BigActionButton(
-                    text = stringResource(R.string.core_map_open_settings),
-                    icon = Icons.Filled.Settings,
-                    onClick = onOpenSettings,
-                    tone = Tone.Neutral,
-                )
-            }
-            if (chrome.showParcelsZoomHint) {
-                StatusPill(
-                    text = stringResource(R.string.core_map_parcels_zoom_hint),
-                    icon = Icons.Filled.ZoomIn,
-                    tone = Tone.Warning,
-                )
-            }
-            panel()
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LayerButton(
-                    text = stringResource(R.string.core_map_layer_map),
-                    icon = Icons.Filled.Map,
-                    isSelected = chrome.baseLayer == BaseLayer.MAP,
-                    onClick = { onSelectBaseLayer(BaseLayer.MAP) },
-                    modifier = Modifier.weight(1f),
-                )
-                LayerButton(
-                    text = stringResource(R.string.core_map_layer_photo),
-                    icon = Icons.Filled.Satellite,
-                    isSelected = chrome.baseLayer == BaseLayer.PHOTO,
-                    onClick = { onSelectBaseLayer(BaseLayer.PHOTO) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (showParcelsToggle) {
-                BigActionButton(
-                    text = stringResource(R.string.core_map_parcels),
-                    icon = Icons.Filled.GridOn,
-                    onClick = onToggleParcels,
-                    tone = if (chrome.showParcels) Tone.Primary else Tone.Neutral,
-                    selected = chrome.showParcels,
-                )
-            }
-        }
-    }
-}
-
-/** Przycisk wyboru warstwy: wybrana = wypełniona, pozostałe = obrys (bez „ptaszka" – za wąsko). */
-@Composable
-private fun LayerButton(
-    text: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    BigActionButton(
-        text = text,
-        icon = icon,
-        onClick = onClick,
-        tone = if (isSelected) Tone.Primary else Tone.Neutral,
-        modifier = modifier.semantics { selected = isSelected },
-    )
-}
-
 private fun Context.hasLocationPermission(): Boolean = LocationPermissions.any {
     ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
 }
@@ -235,26 +284,27 @@ private fun Context.openAppSettings() {
 
 @PreviewLightDark
 @Composable
-private fun MapBottomPanelPreview() {
+private fun MapLayerBarPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        MapBottomPanel(
-            chrome = MapChromeState(baseLayer = BaseLayer.PHOTO, showParcels = true, zoom = 12.0),
-            onSelectBaseLayer = {},
-            onToggleParcels = {},
-            onOpenSettings = {},
-        )
+        Box(Modifier.padding(OverlayPadding)) {
+            MapLayerBar(
+                chrome = MapChromeState(baseLayer = BaseLayer.PHOTO, showParcels = true, zoom = 12.0),
+                onSelectBaseLayer = {},
+                onToggleParcels = {},
+            )
+        }
     }
 }
 
 @PreviewLightDark
 @Composable
-private fun MapBottomPanelDeniedPreview() {
+private fun MapHintsPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        MapBottomPanel(
-            chrome = MapChromeState(locationAccess = LocationAccess.DENIED),
-            onSelectBaseLayer = {},
-            onToggleParcels = {},
-            onOpenSettings = {},
-        )
+        Column(Modifier.padding(OverlayPadding), verticalArrangement = Arrangement.spacedBy(OverlaySpacing)) {
+            MapHints(
+                chrome = MapChromeState(locationAccess = LocationAccess.DENIED, showParcels = true, zoom = 10.0),
+                onOpenSettings = {},
+            )
+        }
     }
 }

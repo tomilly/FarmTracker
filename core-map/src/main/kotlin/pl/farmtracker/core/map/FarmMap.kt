@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.view.Gravity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -107,6 +109,16 @@ private const val ENTRY_STROKE = 3f
 private const val ENTRY_LABEL_SIZE = 15f
 private const val ENTRY_LABEL_OFFSET = 1.1f
 
+/** Pasy mapy (w pikselach) zasłonięte przez przyciski u góry i na dole. */
+internal data class MapCovered(val top: Int = 0, val bottom: Int = 0) {
+    /** Kamera celująca w środek odkrytej części mapy. */
+    fun camera(target: LatLng, zoom: Double): CameraPosition = CameraPosition.Builder()
+        .target(target)
+        .zoom(zoom)
+        .padding(0.0, top.toDouble(), 0.0, bottom.toDouble())
+        .build()
+}
+
 /**
  * Mapa MapLibre w Compose. Stan (warstwy, prośby o wyśrodkowanie) przychodzi z góry;
  * MapView żyje tak długo jak ten composable i podąża za cyklem życia ekranu.
@@ -115,6 +127,7 @@ private const val ENTRY_LABEL_OFFSET = 1.1f
 internal fun FarmMap(
     chrome: MapChromeState,
     overlays: MapOverlays,
+    covered: MapCovered,
     onCameraIdle: (zoom: Double, center: GeoPoint) -> Unit,
     onMapTap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
@@ -134,6 +147,7 @@ internal fun FarmMap(
     var style by remember { mutableStateOf<Style?>(null) }
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnMapTap by rememberUpdatedState(onMapTap)
+    val currentCovered by rememberUpdatedState(covered)
 
     MapViewLifecycle(mapView)
 
@@ -196,12 +210,26 @@ internal fun FarmMap(
             ?.setGeoJson(overlays.highlight.toFeatureCollection())
     }
 
+    // Logo i atrybucja (wymagane licencją map) – u góry, pod przyciskami warstw; na dole zasłaniałby je panel.
+    LaunchedEffect(map, covered.top) {
+        val ui = map?.uiSettings ?: return@LaunchedEffect
+        ui.logoGravity = Gravity.TOP or Gravity.START
+        ui.setLogoMargins(ui.logoMarginLeft, covered.top, ui.logoMarginRight, 0)
+        ui.attributionGravity = Gravity.TOP or Gravity.START
+        ui.setAttributionMargins(ui.attributionMarginLeft, covered.top, ui.attributionMarginRight, 0)
+    }
+
     LaunchedEffect(map, style, locationEnabled, cameraRequest) {
         val mapLibreMap = map ?: return@LaunchedEffect
         val loadedStyle = style ?: return@LaunchedEffect
         val showsMe = locationEnabled && mapLibreMap.showMyLocation(context, loadedStyle)
+        // Klatka na ułożenie panelu – np. karta działki pojawia się razem z prośbą o jej pokazanie.
+        withFrameNanos { }
+        val visible = currentCovered
         when (cameraRequest) {
             is CameraRequest.CenterOnMe -> if (showsMe) {
+                // Śledzenie trzyma pozycję na środku odkrytej części mapy (padding kamery = zasłonięte pasy).
+                mapLibreMap.moveCamera(CameraUpdateFactory.paddingTo(0.0, visible.top.toDouble(), 0.0, visible.bottom.toDouble()))
                 // Śledzenie przesuwa mapę do pozycji (także gdy GPS dopiero ją ustali); przesunięcie palcem je wyłącza.
                 // Zoom podajemy razem z trybem – osobne zoomWhileTracking() jest ignorowane, zanim warstwa pozycji się pokaże.
                 mapLibreMap.locationComponent.setCameraMode(
@@ -215,11 +243,9 @@ internal fun FarmMap(
             }
             is CameraRequest.ShowPlace -> {
                 mapLibreMap.stopFollowingMe()
+                val target = LatLng(cameraRequest.point.latitude, cameraRequest.point.longitude)
                 mapLibreMap.easeCamera(
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(cameraRequest.point.latitude, cameraRequest.point.longitude),
-                        cameraRequest.zoom,
-                    ),
+                    CameraUpdateFactory.newCameraPosition(visible.camera(target, cameraRequest.zoom)),
                     SHOW_AREA_DURATION_MS,
                 )
             }
@@ -227,14 +253,16 @@ internal fun FarmMap(
                 mapLibreMap.stopFollowingMe()
                 val bounds = cameraRequest.bounds
                 val latLngBounds = LatLngBounds.from(bounds.north, bounds.east, bounds.south, bounds.west)
-                val fitted = mapLibreMap.getCameraForLatLngBounds(latLngBounds, IntArray(4) { areaPaddingPx })
-                val fittedTarget = fitted?.target
-                val update = if (cameraRequest.zoomIn || fitted == null || fittedTarget == null) {
-                    CameraUpdateFactory.newLatLngBounds(latLngBounds, areaPaddingPx)
-                } else {
-                    CameraUpdateFactory.newLatLngZoom(fittedTarget, minOf(fitted.zoom, mapLibreMap.cameraPosition.zoom))
-                }
-                mapLibreMap.easeCamera(update, SHOW_AREA_DURATION_MS)
+                // Zoom, przy którym obszar mieści się w odkrytej części mapy (z marginesem).
+                val padding = intArrayOf(areaPaddingPx, visible.top + areaPaddingPx, areaPaddingPx, visible.bottom + areaPaddingPx)
+                val fittedZoom = mapLibreMap.getCameraForLatLngBounds(latLngBounds, padding)?.zoom
+                    ?: return@LaunchedEffect
+                val zoom = if (cameraRequest.zoomIn) fittedZoom else minOf(fittedZoom, mapLibreMap.cameraPosition.zoom)
+                val center = LatLng(bounds.center.latitude, bounds.center.longitude)
+                mapLibreMap.easeCamera(
+                    CameraUpdateFactory.newCameraPosition(visible.camera(center, zoom)),
+                    SHOW_AREA_DURATION_MS,
+                )
             }
             null -> Unit
         }

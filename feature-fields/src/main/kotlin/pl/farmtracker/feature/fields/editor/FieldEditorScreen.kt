@@ -268,7 +268,7 @@ private fun DrawPanel(uiState: FieldEditorUiState, onUndo: () -> Unit, onPickPar
 
 /**
  * Jedno miejsce na komunikat o stałej minimalnej wysokości. Gdy komunikaty pojawiały się i znikały,
- * panel zmieniał wysokość, a mapa przesuwała się pod palcem – przy rysowaniu rogów to przeszkadza.
+ * przyciski pod nimi skakały pod palcem – przy rysowaniu rogów to przeszkadza.
  */
 @Composable
 private fun MessageSlot(content: @Composable () -> Unit) {
