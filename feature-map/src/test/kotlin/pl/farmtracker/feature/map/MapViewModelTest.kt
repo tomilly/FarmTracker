@@ -1,19 +1,27 @@
 package pl.farmtracker.feature.map
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import pl.farmtracker.core.domain.Field
+import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.geo.GeoBounds
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.domain.geo.bounds
 import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
+import pl.farmtracker.core.testing.FakeSessionRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.parcel.ParcelLookup
 
@@ -24,7 +32,9 @@ class MapViewModelTest {
 
     private val parcels = FakeParcelRepository()
     // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
-    private val viewModel by lazy { MapViewModel(parcels, FakeFieldRepository()) }
+    private val session = FakeSessionRepository(Role.DRIVER)
+    private val fieldsRepo = FakeFieldRepository()
+    private val viewModel by lazy { MapViewModel(parcels, fieldsRepo, session) }
     private val selection get() = viewModel.parcelSelection.value
 
     private val tapPoint = GeoPoint(latitude = 50.98, longitude = 17.42)
@@ -121,5 +131,57 @@ class MapViewModelTest {
         viewModel.onMapTapped(tapPoint)
         viewModel.chrome.toggleParcels()
         assertNull(selection.selectedParcel)
+    }
+
+    private val field = Field(
+        id = "f-1",
+        name = "Za lasem",
+        color = FieldColor.ORANGE,
+        shape = listOf(GeoPolygon(listOf(GeoPoint(51.0, 17.0), GeoPoint(51.0, 17.01), GeoPoint(51.01, 17.01), GeoPoint(51.01, 17.0)))),
+    )
+    private val inField = GeoPoint(51.005, 17.005)
+
+    private fun TestScope.watchSelection() {
+        viewModel.selectedField.launchIn(backgroundScope)
+        viewModel.canEditFields.launchIn(backgroundScope)
+    }
+
+    @Test
+    fun `tapping a field shows it instead of looking up a parcel`() = runTest(mainDispatcherRule.testDispatcher) {
+        fieldsRepo.save(field)
+        watchSelection()
+        showParcelsZoomedIn()
+
+        viewModel.onMapTapped(inField)
+
+        assertEquals(field, viewModel.selectedField.value)
+        assertTrue(parcels.requests.isEmpty())
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+        assertEquals(field.shape.bounds(), request.bounds)
+        assertFalse(request.zoomIn)
+    }
+
+    @Test
+    fun `tapping outside the fields or closing the card drops the field`() = runTest(mainDispatcherRule.testDispatcher) {
+        fieldsRepo.save(field)
+        watchSelection()
+
+        viewModel.onMapTapped(inField)
+        viewModel.onMapTapped(tapPoint)
+        assertNull(viewModel.selectedField.value)
+
+        viewModel.onMapTapped(inField)
+        viewModel.clearFieldSelection()
+        assertNull(viewModel.selectedField.value)
+    }
+
+    @Test
+    fun `only the admin can edit a field from the map`() = runTest(mainDispatcherRule.testDispatcher) {
+        watchSelection()
+        assertFalse(viewModel.canEditFields.value)
+
+        session.setRole(Role.ADMIN)
+
+        assertTrue(viewModel.canEditFields.value)
     }
 }

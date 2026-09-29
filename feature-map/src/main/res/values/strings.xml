@@ -9,4 +9,5 @@
     <string name="map_parcel_area">ok. %1$s ha</string>
     <string name="map_parcel_place">%1$s, gm. %2$s</string>
     <string name="map_close">Zamknij</string>
+    <string name="map_edit_field">Edytuj pole</string>
 </resources>

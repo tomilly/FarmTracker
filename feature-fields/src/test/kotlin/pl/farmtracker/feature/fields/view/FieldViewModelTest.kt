@@ -3,6 +3,7 @@ package pl.farmtracker.feature.fields.view
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import pl.farmtracker.core.domain.Field
@@ -46,6 +47,27 @@ class FieldViewModelTest {
         fields.save(renamed)
 
         assertEquals(renamed, (viewModel.uiState.value as FieldViewUiState.Shown).field)
+        assertEquals(framing, viewModel.chrome.state.value.cameraRequest)
+    }
+
+    @Test
+    fun `tapping another field on the map switches to it without zooming in`() {
+        viewModel.onMapTapped(GeoPoint(50.015, 17.005))
+
+        assertEquals(neighbour, (viewModel.uiState.value as FieldViewUiState.Shown).field)
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+        assertEquals(neighbour.shape.bounds(), request.bounds)
+        assertFalse(request.zoomIn)
+    }
+
+    @Test
+    fun `tapping the same field or outside the fields changes nothing`() {
+        val framing = viewModel.chrome.state.value.cameraRequest
+
+        viewModel.onMapTapped(GeoPoint(50.005, 17.005))
+        viewModel.onMapTapped(GeoPoint(51.0, 18.0))
+
+        assertEquals(field, (viewModel.uiState.value as FieldViewUiState.Shown).field)
         assertEquals(framing, viewModel.chrome.state.value.cameraRequest)
     }
 

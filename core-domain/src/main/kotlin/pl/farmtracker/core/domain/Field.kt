@@ -3,6 +3,7 @@ package pl.farmtracker.core.domain
 import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.domain.geo.containsPoint
 
 /** Kolory pól do wyboru. Bez zielonego (tło mapy) i żółtego (zaznaczenie) – żeby pola były widoczne. */
 enum class FieldColor { BLUE, ORANGE, PURPLE, PINK, CYAN, BROWN }
@@ -27,3 +28,6 @@ data class Field(
 ) {
     val areaHectares: Double get() = GeoArea.hectares(shape)
 }
+
+/** Pole pod dotkniętym punktem mapy (`null` – dotknięto poza polami). */
+fun List<Field>.fieldAt(point: GeoPoint): Field? = firstOrNull { it.shape.containsPoint(point) }

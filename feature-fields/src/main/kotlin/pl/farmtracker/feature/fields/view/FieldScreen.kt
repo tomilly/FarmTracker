@@ -36,7 +36,7 @@ import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
 import pl.farmtracker.feature.fields.common.ColorDot
 
-/** Pole na mapie; stąd wchodzi się w edycję, widząc pole przed sobą. */
+/** Pole na mapie; stąd wchodzi się w edycję, widząc pole przed sobą. Dotknięcie innego pola przełącza na nie. */
 @Composable
 fun FieldScreen(
     onBack: () -> Unit,
@@ -54,9 +54,11 @@ fun FieldScreen(
             icon = Icons.Filled.Grass,
             onBack = onBack,
             chrome = viewModel.chrome,
-            onMapTap = {},
+            onMapTap = viewModel::onMapTapped,
             overlays = MapOverlays(
                 fields = state.allFields,
+                // Bieżące pole wyróżnione – po przełączeniu dotykiem widać, które jest teraz pokazane.
+                highlight = state.field.shape,
                 entryPoints = state.allFields.mapNotNull { it.entryPoint },
             ),
             modifier = modifier,

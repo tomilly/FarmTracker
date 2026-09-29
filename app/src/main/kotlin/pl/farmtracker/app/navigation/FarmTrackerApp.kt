@@ -61,7 +61,12 @@ private fun FarmTrackerNavHost(
                 onSwitchRole = onSwitchRole,
             )
         }
-        composable<MapDestination> { MapScreen(onBack = { navController.popBackStack() }) }
+        composable<MapDestination> {
+            MapScreen(
+                onBack = { navController.popBackStack() },
+                onEditField = { id -> navController.navigate(FieldEditorDestination(id)) { launchSingleTop = true } },
+            )
+        }
         composable<FieldsListDestination> {
             FieldsListScreen(
                 onBack = { navController.popBackStack() },

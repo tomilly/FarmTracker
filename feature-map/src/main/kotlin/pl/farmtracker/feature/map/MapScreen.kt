@@ -1,6 +1,9 @@
 package pl.farmtracker.feature.map
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,9 +12,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Map
@@ -32,11 +37,14 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.map.MapOverlays
 import pl.farmtracker.core.map.MapScaffold
+import pl.farmtracker.core.ui.FieldColorUi
+import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.format.formatHectares
@@ -46,12 +54,15 @@ import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 @Composable
 fun MapScreen(
     onBack: () -> Unit,
+    onEditField: (fieldId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = hiltViewModel(),
 ) {
     val selection by viewModel.parcelSelection.collectAsStateWithLifecycle()
     val chrome by viewModel.chrome.state.collectAsStateWithLifecycle()
     val fields by viewModel.fields.collectAsStateWithLifecycle()
+    val selectedField by viewModel.selectedField.collectAsStateWithLifecycle()
+    val canEditFields by viewModel.canEditFields.collectAsStateWithLifecycle()
 
     MapScaffold(
         title = stringResource(R.string.map_title),
@@ -61,16 +72,65 @@ fun MapScreen(
         onMapTap = viewModel::onMapTapped,
         overlays = MapOverlays(
             fields = fields,
-            highlight = selection.selectedParcel?.shape.orEmpty(),
+            highlight = selectedField?.shape ?: selection.selectedParcel?.shape.orEmpty(),
             entryPoints = fields.mapNotNull { it.entryPoint },
         ),
         modifier = modifier,
     ) {
-        ParcelMessage(
-            selection = selection,
-            parcelsVisible = chrome.parcelsVisible,
-            onClearParcel = viewModel::clearParcelSelection,
-        )
+        val field = selectedField
+        if (field != null) {
+            SelectedFieldCard(field = field, onClose = viewModel::clearFieldSelection)
+            if (canEditFields) {
+                BigActionButton(
+                    text = stringResource(R.string.map_edit_field),
+                    icon = Icons.Filled.Edit,
+                    onClick = { onEditField(field.id) },
+                )
+            }
+        } else {
+            ParcelMessage(
+                selection = selection,
+                parcelsVisible = chrome.parcelsVisible,
+                onClearParcel = viewModel::clearParcelSelection,
+            )
+        }
+    }
+}
+
+/** Dotknięte pole: kolor, nazwa i powierzchnia – jak karta działki, żeby wyglądało znajomo. */
+@Composable
+private fun SelectedFieldCard(field: Field, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(32.dp)
+                    .background(FieldColorUi.color(field.color), CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(text = field.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = stringResource(R.string.map_parcel_area, formatHectares(field.areaHectares)),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            TextButton(onClick = onClose, modifier = Modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget)) {
+                Icon(Icons.Filled.Close, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.map_close), style = MaterialTheme.typography.labelMedium)
+            }
+        }
     }
 }
 

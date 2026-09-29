@@ -46,7 +46,8 @@ Geometria (WKT, powierzchnia) w `core-domain/.../geo`.
 M2 gotowe (`feature-fields`, zapis lokalny w DataStore JSON – `data/.../field`): lista pól (admin → „Pola"),
 nowe pole z działek (dotyk / wieś „sulmow" przez Nominatim OSM / numer „Otusz 125" przez ULDK) albo narysowane
 po rogach → nazwa, kolor, wjazd → zapis; działka może należeć tylko do jednego pola;
-dotknięcie pola na liście → pole na mapie (`FieldScreen`) → „Edytuj pole"; usuwanie z „Cofnij" (`DeletedFieldBin`);
+dotknięcie pola na liście → pole na mapie (`FieldScreen`, dotknięcie innego pola przełącza) → „Edytuj pole";
+na głównej mapie dotknięcie pola pokazuje kartę pola (admin: „Edytuj pole"); usuwanie z „Cofnij" (`DeletedFieldBin`);
 pola i wjazdy widoczne na mapie każdej roli.
 Następny: M3 – Firebase Auth (SMS), zbiór, zaproszenia, role.
 Kamienie milowe: docs/BRIEF.md §9.
