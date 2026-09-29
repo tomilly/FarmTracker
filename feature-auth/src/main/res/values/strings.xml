@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Logowanie -->
+    <string name="auth_title">Logowanie</string>
+    <string name="auth_intro">Zaloguj się numerem telefonu – bez hasła i zakładania konta.</string>
+    <string name="auth_phone_label">Twój numer telefonu</string>
+    <string name="auth_phone_hint">np. 600 123 456</string>
+    <string name="auth_send_code">Wyślij kod SMS</string>
+    <string name="auth_sending">Wysyłam SMS…</string>
+    <string name="auth_code_label">Wpisz kod z SMS-a</string>
+    <string name="auth_code_sent_to">SMS poszedł na numer %1$s</string>
+    <string name="auth_checking">Sprawdzam kod…</string>
+    <string name="auth_resend">Wyślij kod jeszcze raz</string>
+    <string name="auth_change_number">Zmień numer</string>
+    <string name="auth_invalid_number">To nie wygląda na numer telefonu</string>
+    <string name="auth_too_many">Za dużo prób – spróbuj za kilka minut</string>
+    <string name="auth_unavailable">Brak zasięgu – spróbuj jeszcze raz</string>
+    <string name="auth_wrong_code">Zły kod – wpisz jeszcze raz</string>
+    <string name="auth_expired">Kod wygasł – wyślij nowy</string>
+
+    <!-- Pierwsze wejście: zbiór -->
+    <string name="onboarding_title">Witaj!</string>
+    <string name="onboarding_name_label">Jak masz na imię?</string>
+    <string name="onboarding_name_hint">np. Marek</string>
+    <string name="onboarding_name_why">Inni zobaczą je na mapie</string>
+    <string name="onboarding_have_code">Mam kod zaproszenia</string>
+    <string name="onboarding_create">Zakładam nowy zbiór</string>
+    <string name="onboarding_join_title">Kod zaproszenia</string>
+    <string name="onboarding_code_label">Wpisz 6 cyfr z zaproszenia</string>
+    <string name="onboarding_joining">Dołączam…</string>
+    <string name="onboarding_retry">Spróbuj jeszcze raz</string>
+    <string name="onboarding_invalid_code">Nie ma takiego kodu albo już wygasł – poproś o nowy</string>
+    <string name="onboarding_unavailable">Brak zasięgu – spróbuj jeszcze raz</string>
+    <string name="onboarding_create_title">Nowy zbiór</string>
+    <string name="onboarding_harvest_label">Nazwa zbioru</string>
+    <string name="onboarding_harvest_hint">np. Kukurydza 2026</string>
+    <string name="onboarding_create_button">Załóż zbiór</string>
+    <string name="onboarding_creating">Zakładam zbiór…</string>
+    <string name="onboarding_admin_note">Będziesz adminem: dodasz pola i zaprosisz ludzi.</string>
+</resources>
