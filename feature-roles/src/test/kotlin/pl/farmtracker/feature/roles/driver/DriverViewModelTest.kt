@@ -67,6 +67,18 @@ class DriverViewModelTest {
     }
 
     @Test
+    fun `the map keeps the working harvester on screen, not an old position or other drivers`() = driverTest {
+        crew.locations.locations.value = listOf(
+            crew.someone("Rysiek", Role.HARVESTER, crew.onTheField, fieldId = "f1"),
+            crew.someone("Staszek", Role.HARVESTER, crew.onTheRoad, fieldId = null, minutesAgo = 10),
+            crew.someone("Marek", Role.DRIVER, crew.onTheRoad, fieldId = null),
+        )
+        viewModel.overlays.launchIn(backgroundScope)
+
+        assertEquals(listOf(crew.onTheField), viewModel.overlays.value.keepInView)
+    }
+
+    @Test
     fun `the phone knows where the driver is - no status buttons`() = driverTest {
         viewModel.startWork()
 

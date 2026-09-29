@@ -59,6 +59,10 @@ class DriverViewModel @Inject constructor(
             entryPoints = crew.fields.flatMap { it.entryPoints },
             base = base?.location,
             people = crew.locations.toMapPeople(crew.nowMillis),
+            // Kierowca jedzie do sieczkarni i od niej – ma być na ekranie razem z nim (stara pozycja nie oddala mapy).
+            keepInView = crew.locations
+                .filter { !it.isMe && it.role == Role.HARVESTER && !it.isStaleAt(crew.nowMillis) }
+                .map { it.point },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MapOverlays())
 

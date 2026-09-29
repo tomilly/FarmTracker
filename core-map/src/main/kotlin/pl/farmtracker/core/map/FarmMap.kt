@@ -80,12 +80,19 @@ import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.ui.FieldColorUi
 import pl.farmtracker.core.ui.RoleUi
 import java.util.Locale
+import kotlin.math.abs
 
 private val PolandCenter = LatLng(52.07, 19.48)
 private const val MY_LOCATION_ZOOM = 16.0
 private const val MY_LOCATION_TRANSITION_MS = 750L
 private val SHOW_AREA_PADDING = 48.dp
 private const val SHOW_AREA_DURATION_MS = 800
+
+// Kierowca jedzie, sieczkarnia ma być na ekranie: margines na kropkę z podpisem, najdalej kilka km wokół,
+// zoom poprawiany dopiero przy wyraźnej różnicy – bez ciągłego „pompowania" mapy.
+private val KEEP_IN_VIEW_MARGIN = 56.dp
+private const val KEEP_IN_VIEW_MIN_ZOOM = 11.0
+private const val KEEP_IN_VIEW_ZOOM_STEP = 0.3
 
 // Żółty jak zaznaczenie markerem – dobrze widoczny i na mapie, i na zdjęciu lotniczym.
 private const val SELECTION_FILL_COLOR = "#FFD600"
@@ -155,6 +162,8 @@ internal fun FarmMap(
     val cameraRequest = chrome.cameraRequest
     val context = LocalContext.current
     val areaPaddingPx = with(LocalDensity.current) { SHOW_AREA_PADDING.roundToPx() }
+    val keepInViewMarginPx = with(LocalDensity.current) { KEEP_IN_VIEW_MARGIN.toPx() }
+    val density = LocalDensity.current.density
     val entryLabel = stringResource(R.string.core_map_entry_label)
     val baseLabel = stringResource(R.string.core_map_base_label)
     val mapView = remember {
@@ -168,6 +177,38 @@ internal fun FarmMap(
     val currentCovered by rememberUpdatedState(covered)
     val currentChrome by rememberUpdatedState(chrome)
     val currentOnCameraRequestHandled by rememberUpdatedState(onCameraRequestHandled)
+    val currentKeepInView by rememberUpdatedState(overlays.keepInView)
+
+    // Ktoś sam przesunął albo przybliżył mapę – nie poprawiamy mu zoomu, aż znów kliknie „Gdzie jestem".
+    var autoZoom by remember { mutableStateOf(true) }
+
+    /** Zoom, przy którym obok mnie widać [MapOverlays.keepInView]; `null` – nie ma czego pilnować albo nie wiem, gdzie jestem. */
+    fun MapLibreMap.keepInViewZoom(): Double? {
+        val points = currentKeepInView
+        if (points.isEmpty() || !locationComponent.isLocationComponentActivated) return null
+        val me = locationComponent.lastKnownLocation ?: return null
+        val covered = currentCovered
+        return zoomKeepingInView(
+            center = GeoPoint(latitude = me.latitude, longitude = me.longitude),
+            points = points,
+            halfWidthDp = (mapView.width / 2.0 - keepInViewMarginPx) / density,
+            halfHeightDp = ((mapView.height - covered.top - covered.bottom) / 2.0 - keepInViewMarginPx) / density,
+            maxZoom = MY_LOCATION_ZOOM,
+            minZoom = KEEP_IN_VIEW_MIN_ZOOM,
+        )
+    }
+
+    /** Mapa jedzie za mną – oddal / przybliż tak, żeby [MapOverlays.keepInView] został na ekranie. */
+    fun MapLibreMap.keepPointsInView() {
+        if (!autoZoom || !locationComponent.isLocationComponentActivated) return
+        if (locationComponent.cameraMode != CameraMode.TRACKING) return
+        val zoom = keepInViewZoom() ?: return
+        if (abs(zoom - cameraPosition.zoom) < KEEP_IN_VIEW_ZOOM_STEP) return
+        // Ani zoomWhileTracking(), ani ponowne TRACKING nie zmieniają zoomu, gdy mapa już jedzie za pozycją –
+        // śledzenie włączamy od nowa (jak „Gdzie jestem"), z nowym zoomem i płynnym przejściem.
+        locationComponent.cameraMode = CameraMode.NONE
+        locationComponent.setCameraMode(CameraMode.TRACKING, MY_LOCATION_TRANSITION_MS, zoom, null, null, null)
+    }
 
     MapViewLifecycle(mapView)
 
@@ -189,6 +230,11 @@ internal fun FarmMap(
                 val position = mapLibreMap.cameraPosition
                 val target = position.target ?: return@addOnCameraIdleListener
                 currentOnCameraIdle(position.zoom, GeoPoint(latitude = target.latitude, longitude = target.longitude))
+                // Przejechałem kawałek (kamera jedzie za mną) – czy sieczkarnia dalej jest na ekranie.
+                mapLibreMap.keepPointsInView()
+            }
+            mapLibreMap.addOnCameraMoveStartedListener { reason ->
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) autoZoom = false
             }
             mapLibreMap.addOnMapClickListener { latLng ->
                 currentOnMapTap(GeoPoint(latitude = latLng.latitude, longitude = latLng.longitude))
@@ -239,6 +285,10 @@ internal fun FarmMap(
             ?.setGeoJson(overlays.people.toPeopleFeatureCollection(roleLabels))
     }
 
+    LaunchedEffect(map, overlays.keepInView) {
+        map?.keepPointsInView()
+    }
+
     LaunchedEffect(style, overlays.highlight) {
         style?.getSourceAs<GeoJsonSource>(MapSources.SELECTION_SOURCE_ID)
             ?.setGeoJson(overlays.highlight.toFeatureCollection())
@@ -271,6 +321,7 @@ internal fun FarmMap(
         }
         when (request) {
             is CameraRequest.CenterOnMe -> if (showsMe) {
+                autoZoom = true
                 // Śledzenie trzyma pozycję na środku odkrytej części mapy (padding kamery = zasłonięte pasy).
                 mapLibreMap.moveCamera(CameraUpdateFactory.paddingTo(0.0, visible.top.toDouble(), 0.0, visible.bottom.toDouble()))
                 // Śledzenie przesuwa mapę do pozycji (także gdy GPS dopiero ją ustali); przesunięcie palcem je wyłącza.
@@ -278,7 +329,7 @@ internal fun FarmMap(
                 mapLibreMap.locationComponent.setCameraMode(
                     CameraMode.TRACKING,
                     MY_LOCATION_TRANSITION_MS,
-                    MY_LOCATION_ZOOM,
+                    mapLibreMap.keepInViewZoom() ?: MY_LOCATION_ZOOM,
                     null,
                     null,
                     null,
