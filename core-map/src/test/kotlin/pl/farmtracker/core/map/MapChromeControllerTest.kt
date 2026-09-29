@@ -51,6 +51,19 @@ class MapChromeControllerTest {
     }
 
     @Test
+    fun `a camera request runs once, so a map shown again stays where it was`() {
+        val field = listOf(GeoPolygon(listOf(GeoPoint(50.0, 17.0), GeoPoint(50.0, 17.01), GeoPoint(50.01, 17.01))))
+        chrome.showArea(field, zoomIn = false)
+        val request = state.pendingCameraRequest!!
+
+        chrome.onCameraRequestHandled(request.id)
+        assertNull(state.pendingCameraRequest) // np. powrót z edycji pola – bez oddalania do całej Polski
+
+        chrome.showArea(field)
+        assertEquals(request.id + 1, state.pendingCameraRequest?.id)
+    }
+
+    @Test
     fun `a finger covers fewer meters the closer the map is`() {
         val close = MapChromeState(zoom = 17.0).fingerMeters(latitude = 0.0)
         val far = MapChromeState(zoom = 15.0).fingerMeters(latitude = 0.0)

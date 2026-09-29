@@ -128,6 +128,7 @@ fun MapScaffold(
                 covered = MapCovered(top = coveredTop, bottom = coveredBottom),
                 onCameraIdle = chrome::onCameraIdle,
                 onMapTap = onMapTap,
+                onCameraRequestHandled = chrome::onCameraRequestHandled,
                 modifier = Modifier.fillMaxSize(),
             )
             MapLayerBar(

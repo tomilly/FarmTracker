@@ -16,8 +16,8 @@ enum class BaseLayer { MAP, PHOTO }
 enum class LocationAccess { UNKNOWN, GRANTED, DENIED }
 
 /**
- * Prośba o ustawienie kamery. Obowiązuje najnowsza ([id] rośnie) – także gdy mapa powstaje od nowa
- * (np. po powrocie z innego kroku), dzięki czemu nie „skacze" do starszej prośby.
+ * Prośba o ustawienie kamery. Obowiązuje najnowsza ([id] rośnie) i wykonuje się raz: gdy mapa powstaje od nowa
+ * (np. po powrocie z edycji), wraca do ostatniego widoku – nie „skacze" do dawnej prośby.
  */
 sealed interface CameraRequest {
     val id: Int
@@ -46,10 +46,15 @@ data class MapChromeState(
     /** UI ma teraz zapytać system o zgodę na lokalizację (jednorazowo – potem [MapChromeController.onLocationPermissionAsked]). */
     val askForLocation: Boolean = false,
     val cameraRequest: CameraRequest? = null,
+    /** [CameraRequest.id] ostatniej prośby, którą mapa już wykonała. */
+    val handledCameraRequestId: Int = 0,
 ) {
     val parcelsVisible: Boolean get() = showParcels && zoom >= MapSources.PARCELS_MIN_ZOOM
 
     val showParcelsZoomHint: Boolean get() = showParcels && !parcelsVisible
+
+    /** Prośba o kamerę jeszcze niewykonana; `null` – mapa ma zostać tam, gdzie ją zostawiono. */
+    val pendingCameraRequest: CameraRequest? get() = cameraRequest?.takeIf { it.id > handledCameraRequestId }
 
     /**
      * Ile metrów w terenie przykrywa opuszek palca przy obecnym zoomie – żeby dotknięcie trafiało
@@ -139,6 +144,9 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
     fun showPlace(point: GeoPoint, zoom: Double = PLACE_ZOOM) = _state.update {
         it.copy(cameraRequest = CameraRequest.ShowPlace(it.nextCameraId(), point, zoom))
     }
+
+    /** Mapa wykonała prośbę – po odtworzeniu mapy (powrót na ekran) nie powtarzamy jej. */
+    fun onCameraRequestHandled(id: Int) = _state.update { it.copy(handledCameraRequestId = maxOf(it.handledCameraRequestId, id)) }
 
     fun selectBaseLayer(layer: BaseLayer) = _state.update { it.copy(baseLayer = layer) }
 

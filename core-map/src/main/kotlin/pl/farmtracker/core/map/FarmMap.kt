@@ -136,6 +136,7 @@ internal fun FarmMap(
     covered: MapCovered,
     onCameraIdle: (zoom: Double, center: GeoPoint) -> Unit,
     onMapTap: (GeoPoint) -> Unit,
+    onCameraRequestHandled: (id: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val baseLayer = chrome.baseLayer
@@ -155,6 +156,8 @@ internal fun FarmMap(
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnMapTap by rememberUpdatedState(onMapTap)
     val currentCovered by rememberUpdatedState(covered)
+    val currentChrome by rememberUpdatedState(chrome)
+    val currentOnCameraRequestHandled by rememberUpdatedState(onCameraRequestHandled)
 
     MapViewLifecycle(mapView)
 
@@ -162,9 +165,12 @@ internal fun FarmMap(
 
     LaunchedEffect(mapView) {
         mapView.getMapAsync { mapLibreMap ->
+            // Mapa odtwarzana (powrót na ekran) startuje od ostatniego widoku, nowa – od całej Polski.
+            // Ważne też dlatego, że pierwszy „bezruch" kamery zapisuje widok jako ostatni.
+            val last = currentChrome.center
             mapLibreMap.cameraPosition = CameraPosition.Builder()
-                .target(PolandCenter)
-                .zoom(MapChromeState.INITIAL_ZOOM)
+                .target(last?.let { LatLng(it.latitude, it.longitude) } ?: PolandCenter)
+                .zoom(if (last != null) currentChrome.zoom else MapChromeState.INITIAL_ZOOM)
                 .build()
             // Zawsze północ u góry i widok z góry – obrócona/pochylona mapa dezorientuje (BRIEF §4).
             mapLibreMap.uiSettings.isRotateGesturesEnabled = false
@@ -238,7 +244,16 @@ internal fun FarmMap(
         // Klatka na ułożenie panelu – np. karta działki pojawia się razem z prośbą o jej pokazanie.
         withFrameNanos { }
         val visible = currentCovered
-        when (cameraRequest) {
+        val request = currentChrome.pendingCameraRequest
+        if (request == null) {
+            // Prośba już wykonana, a mapa powstała od nowa (powrót z edycji): zostaje ostatni widok –
+            // z tym samym paddingiem, żeby nic nie przesunęło się względem przycisków.
+            val last = currentChrome.center ?: return@LaunchedEffect
+            val target = LatLng(last.latitude, last.longitude)
+            mapLibreMap.moveCamera(CameraUpdateFactory.newCameraPosition(visible.camera(target, currentChrome.zoom)))
+            return@LaunchedEffect
+        }
+        when (request) {
             is CameraRequest.CenterOnMe -> if (showsMe) {
                 // Śledzenie trzyma pozycję na środku odkrytej części mapy (padding kamery = zasłonięte pasy).
                 mapLibreMap.moveCamera(CameraUpdateFactory.paddingTo(0.0, visible.top.toDouble(), 0.0, visible.bottom.toDouble()))
@@ -252,31 +267,33 @@ internal fun FarmMap(
                     null,
                     null,
                 )
+                currentOnCameraRequestHandled(request.id)
             }
             is CameraRequest.ShowPlace -> {
                 mapLibreMap.stopFollowingMe()
-                val target = LatLng(cameraRequest.point.latitude, cameraRequest.point.longitude)
+                val target = LatLng(request.point.latitude, request.point.longitude)
                 mapLibreMap.easeCamera(
-                    CameraUpdateFactory.newCameraPosition(visible.camera(target, cameraRequest.zoom)),
+                    CameraUpdateFactory.newCameraPosition(visible.camera(target, request.zoom)),
                     SHOW_AREA_DURATION_MS,
                 )
+                currentOnCameraRequestHandled(request.id)
             }
             is CameraRequest.ShowArea -> {
                 mapLibreMap.stopFollowingMe()
-                val bounds = cameraRequest.bounds
+                val bounds = request.bounds
                 val latLngBounds = LatLngBounds.from(bounds.north, bounds.east, bounds.south, bounds.west)
                 // Zoom, przy którym obszar mieści się w odkrytej części mapy (z marginesem).
                 val padding = intArrayOf(areaPaddingPx, visible.top + areaPaddingPx, areaPaddingPx, visible.bottom + areaPaddingPx)
                 val fittedZoom = mapLibreMap.getCameraForLatLngBounds(latLngBounds, padding)?.zoom
                     ?: return@LaunchedEffect
-                val zoom = if (cameraRequest.zoomIn) fittedZoom else minOf(fittedZoom, mapLibreMap.cameraPosition.zoom)
+                val zoom = if (request.zoomIn) fittedZoom else minOf(fittedZoom, mapLibreMap.cameraPosition.zoom)
                 val center = LatLng(bounds.center.latitude, bounds.center.longitude)
                 mapLibreMap.easeCamera(
                     CameraUpdateFactory.newCameraPosition(visible.camera(center, zoom)),
                     SHOW_AREA_DURATION_MS,
                 )
+                currentOnCameraRequestHandled(request.id)
             }
-            null -> Unit
         }
     }
 }
