@@ -53,11 +53,14 @@ dotknięcie pola na liście → pole na mapie (`FieldScreen`, dotknięcie innego
 na głównej mapie dotknięcie pola pokazuje kartę pola (admin: „Edytuj pole"); usuwanie z „Cofnij" (`DeletedFieldBin`);
 pola i wjazdy widoczne na mapie każdej roli. Baza (silos/pryzma): admin → „Baza" (`feature-fields/.../base`,
 zapis `data/.../base`), czarna kropka „Baza" na mapach.
-M3 w toku: logowanie numerem (`feature-auth`: login, pierwsze wejście – imię, kod zaproszenia / nowy zbiór),
+M3 gotowe (sprawdzone na 2 emulatorach z prawdziwym Firebase, numery testowe +48 600 000 001 admin / …002 kierowca):
+logowanie numerem (`feature-auth`: login, pierwsze wejście – imię, kod zaproszenia / nowy zbiór),
 admin „Ludzie" (`feature-team`: zaproszenia na rolę – 6 cyfr, 7 dni, wysyłka przez udostępnianie; rola, usuwanie
 z „Cofnij"). Firebase: `data/.../auth/FirebaseAuthRepository`, `data/.../harvest/FirestoreHarvestRepository`
 (`users/{uid}`, `harvests/{id}` + `members`, `fields`, `invites/{kod}`), pola/baza `Firestore*Repository`;
-reguły w `firestore.rules` (wkleja się w konsoli). Tryb zależy od `app/google-services.json` (nie w repo – repo
+reguły w `firestore.rules` (wkleja się w konsoli – po każdej zmianie pliku przypomnij o publikacji).
+Nasłuch Firestore tylko przez `data/.../firebase/Listen.kt` `changes()`, nie `snapshots()` (ten przy odmowie serwera
+kończy się CancellationException i ekran po cichu przestaje się odświeżać); dane zbioru z `retryWhenNotYetMember()`. Tryb zależy od `app/google-services.json` (nie w repo – repo
 publiczne): jest → `BuildConfig.SHARED_HARVEST` i wspólny zbiór; brak → jak przed M3 (wybór roli, dane lokalne).
 Wybór w `app/.../di/StorageModule`. W debug „Zmień rolę" przykrywa rolę ze zbioru tylko na tym telefonie.
 `-Pfarmtracker.localOnly` buduje wersję lokalną mimo pliku (próby na emulatorze bez logowania); `-Pfarmtracker.demo` – lokalna
