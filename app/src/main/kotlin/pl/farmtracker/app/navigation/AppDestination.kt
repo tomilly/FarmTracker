@@ -30,6 +30,10 @@ data object MapDestination
 @Serializable
 data object FieldsListDestination
 
+/** Jedno pole na mapie (dotknięte na liście); stąd „Edytuj pole". Nazwa właściwości = `FieldViewModel.FIELD_ID_ARG`. */
+@Serializable
+data class FieldDestination(val fieldId: String)
+
 /**
  * Tworzenie nowego pola (`fieldId == null`) albo edycja istniejącego. Nazwa właściwości musi się
  * zgadzać z `FieldEditorViewModel.FIELD_ID_ARG`.

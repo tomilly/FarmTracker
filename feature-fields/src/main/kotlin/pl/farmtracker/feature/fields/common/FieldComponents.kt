@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,7 +49,7 @@ internal fun ColorDot(color: FieldColor, size: Dp, modifier: Modifier = Modifier
     )
 }
 
-/** Wiersz pola na liście: kolor, nazwa, powierzchnia i „Edytuj" (cały wiersz jest dotykalny). */
+/** Wiersz pola na liście: kolor, nazwa, powierzchnia i „Na mapie" (cały wiersz jest dotykalny). */
 @Composable
 internal fun FieldCard(field: Field, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
@@ -71,9 +71,9 @@ internal fun FieldCard(field: Field, onClick: () -> Unit, modifier: Modifier = M
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Icon(Icons.Filled.Edit, contentDescription = null)
+            Icon(Icons.Filled.Map, contentDescription = null)
             Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.fields_edit), style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.fields_on_map), style = MaterialTheme.typography.labelMedium)
         }
     }
 }

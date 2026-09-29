@@ -48,7 +48,8 @@
     <string name="fields_name_required">Wpisz nazwę pola</string>
     <string name="fields_save">Zapisz pole</string>
     <string name="fields_edit_title">Edytuj pole</string>
-    <string name="fields_edit">Edytuj</string>
+    <string name="fields_on_map">Na mapie</string>
+    <string name="fields_edit_field">Edytuj pole</string>
     <string name="fields_delete">Usuń pole</string>
     <string name="fields_deleted">Usunięto pole „%1$s”</string>
 
@@ -57,6 +58,7 @@
     <string name="fields_entry_mark">Zaznacz wjazd na mapie</string>
     <string name="fields_entry_change">Zmień wjazd</string>
     <string name="fields_entry_set">Wjazd zaznaczony</string>
+    <string name="fields_entry_missing">Wjazd nie zaznaczony</string>
     <string name="fields_entry_remove">Usuń wjazd</string>
     <string name="fields_entry_title">Wjazd na pole</string>
     <string name="fields_entry_hint">Dotknij miejsca, gdzie wjeżdża się na pole</string>

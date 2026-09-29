@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import pl.farmtracker.core.domain.Role
@@ -66,7 +67,8 @@ fun FarmTrackerTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
                 Spacer(Modifier.width(12.dp))
-                Text(text = title, style = MaterialTheme.typography.titleLarge)
+                // Długa nazwa (np. pola) nie może rozepchnąć paska – kończy się wielokropkiem.
+                Text(text = title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         navigationIcon = {

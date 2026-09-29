@@ -34,7 +34,7 @@ import pl.farmtracker.feature.fields.common.FieldCard
 fun FieldsListScreen(
     onBack: () -> Unit,
     onAddField: () -> Unit,
-    onEditField: (fieldId: String) -> Unit,
+    onOpenField: (fieldId: String) -> Unit,
     onShowMap: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FieldsListViewModel = hiltViewModel(),
@@ -62,7 +62,7 @@ fun FieldsListScreen(
         uiState = uiState,
         onBack = onBack,
         onAddField = onAddField,
-        onEditField = onEditField,
+        onOpenField = onOpenField,
         onShowMap = onShowMap,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
@@ -74,7 +74,7 @@ internal fun FieldsListContent(
     uiState: FieldsListUiState,
     onBack: () -> Unit,
     onAddField: () -> Unit,
-    onEditField: (fieldId: String) -> Unit,
+    onOpenField: (fieldId: String) -> Unit,
     onShowMap: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -96,7 +96,7 @@ internal fun FieldsListContent(
             if (uiState.fields.isEmpty()) {
                 StatusPill(text = stringResource(R.string.fields_empty), icon = Icons.Filled.Info)
             } else {
-                uiState.fields.forEach { field -> FieldCard(field, onClick = { onEditField(field.id) }) }
+                uiState.fields.forEach { field -> FieldCard(field, onClick = { onOpenField(field.id) }) }
                 BigActionButton(
                     text = stringResource(R.string.fields_show_on_map),
                     icon = Icons.Filled.Map,
@@ -123,7 +123,7 @@ private fun FieldsListPreview() {
             ),
             onBack = {},
             onAddField = {},
-            onEditField = {},
+            onOpenField = {},
             onShowMap = {},
         )
     }
@@ -137,7 +137,7 @@ private fun FieldsListEmptyPreview() {
             uiState = FieldsListUiState.Ready(emptyList()),
             onBack = {},
             onAddField = {},
-            onEditField = {},
+            onOpenField = {},
             onShowMap = {},
         )
     }
