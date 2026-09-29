@@ -8,12 +8,13 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import pl.farmtracker.core.domain.DriverState
+import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.testing.FakeWorkRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.feature.roles.common.Coworker
 import pl.farmtracker.feature.roles.common.CrewFixture
+import pl.farmtracker.feature.roles.common.MyPosition
 
 class DriverViewModelTest {
 
@@ -31,48 +32,8 @@ class DriverViewModelTest {
     }
 
     @Test
-    fun `starts idle without undo`() = driverTest {
-        assertEquals(DriverState.IDLE, state.state)
-        assertFalse(state.canUndo)
-    }
-
-    @Test
-    fun `selecting a status makes it current and allows undo`() = driverTest {
-        viewModel.selectState(DriverState.TO_FIELD)
-        viewModel.selectState(DriverState.LOADING)
-
-        assertEquals(DriverState.LOADING, state.state)
-        assertEquals(DriverState.TO_FIELD, state.previousState)
-        assertTrue(state.canUndo)
-    }
-
-    @Test
-    fun `undo restores previous status once`() = driverTest {
-        viewModel.selectState(DriverState.TO_FIELD)
-        viewModel.selectState(DriverState.LOADING)
-
-        viewModel.undo()
-
-        assertEquals(DriverState.TO_FIELD, state.state)
-        assertFalse(state.canUndo)
-    }
-
-    @Test
-    fun `selecting the same status again keeps undo target`() = driverTest {
-        viewModel.selectState(DriverState.TO_FIELD)
-        viewModel.selectState(DriverState.LOADING)
-
-        viewModel.selectState(DriverState.LOADING)
-
-        assertEquals(DriverState.TO_FIELD, state.previousState)
-    }
-
-    @Test
-    fun `undo without history does nothing`() = driverTest {
-        viewModel.undo()
-
-        assertEquals(DriverState.IDLE, state.state)
-        assertFalse(state.canUndo)
+    fun `starts not working`() = driverTest {
+        assertFalse(state.isWorking)
     }
 
     @Test
@@ -82,6 +43,15 @@ class DriverViewModelTest {
 
         viewModel.stopWork()
         assertFalse(work.isWorking.value)
+    }
+
+    @Test
+    fun `the phone knows where the driver is - no status buttons`() = driverTest {
+        viewModel.startWork()
+
+        crew.locations.publish(PositionReport(crew.onTheField, "f1", crew.clock.now))
+
+        assertEquals(MyPosition.OnField("Za lasem"), state.position)
     }
 
     @Test

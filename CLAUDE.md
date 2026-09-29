@@ -9,6 +9,9 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
 - Po zalogowaniu użytkownik trafia od razu na ekran swojej roli (Sieczkarnia / Kierowca / Baza / Admin).
 - Lokalizacja udostępniana tylko gdy użytkownik kliknie „Zaczynam pracę"; zawsze widoczne, że jest włączona.
 - Zakładaj słaby zasięg: UI nie może się blokować przy braku sieci.
+- Kierowca i sieczkarnia prowadzą – w czasie pracy nic nie klikają. Bez statusów kursu („Jadę na pole", „Ładuję"…);
+  co się da, wykrywa telefon (pole z lokalizacji). Aplikacja ma być super prosta.
+- „Kończę pracę" – mały przycisk na dole ekranu, z potwierdzeniem (wyjątek od „cofnij zamiast potwierdzeń").
 
 ## Stack
 - Kotlin, Jetpack Compose, Material 3, min SDK 26, Gradle KTS + version catalog (`libs.versions.toml`).

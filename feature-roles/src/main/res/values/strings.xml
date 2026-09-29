@@ -26,14 +26,6 @@
     <string name="roles_coworker_off_field">w drodze</string>
     <string name="roles_coworker_stale">brak pozycji od kilku minut</string>
 
-    <!-- Kierowca -->
-    <string name="roles_driver_pick_status">Wybierz, co teraz robisz</string>
-    <string name="roles_driver_current_status">Teraz: %1$s</string>
-    <string name="roles_driver_to_field">Jadę na pole</string>
-    <string name="roles_driver_loading">Ładuję</string>
-    <string name="roles_driver_to_base">Wiozę do bazy</string>
-    <string name="roles_driver_unloading">Rozładunek</string>
-    <string name="roles_undo">Cofnij</string>
     <string name="roles_open_map">Mapa</string>
 
     <!-- Kto gdzie jest -->

@@ -16,8 +16,8 @@ Prosta aplikacja na Androida, która:
 | Rola | Kto to | Czego potrzebuje |
 |---|---|---|
 | **Admin** | rolnik / właściciel / organizator zbioru | oznacza pola, zaprasza ludzi, przydziela role, ustawia „aktywne pole" |
-| **Sieczkarnia** | operator sieczkarni | jednym przyciskiem mówi „jestem na polu X" / „przejeżdżam", widzi, który kierowca nadjeżdża |
-| **Kierowca** | kierowca transportu | widzi, gdzie jest sieczkarnia, nawigacja do wjazdu na pole, status „jadę pusty / pełny / rozładunek" |
+| **Sieczkarnia** | operator sieczkarni | „Zaczynam pracę" – na którym polu jest, wykrywa telefon; widzi, który kierowca nadjeżdża |
+| **Kierowca** | kierowca transportu | widzi, gdzie jest sieczkarnia, nawigacja do wjazdu na pole; nic nie klika w czasie jazdy |
 | **Baza** | osoba na silosie/pryzmie | widzi, kto jedzie z ładunkiem i kiedy mniej więcej będzie |
 
 Jedna osoba może mieć jedną rolę na dany zbiór (admin może też być w innej roli).
@@ -34,6 +34,8 @@ Użytkownicy są **mocno nietechniczni**, często w rękawicach, w kabinie, w s�
 - **Wybaczanie błędów** – cofnięcie ostatniej akcji, potwierdzenie tylko dla nieodwracalnych.
 - **Test „trunk test"** – na każdym ekranie wiadomo: gdzie jestem, kim jestem (rola), co mogę zrobić.
 - Menu maksymalnie płaskie: 3–4 pozycje w dolnym pasku, reszta u admina w „Ustawieniach".
+- **Kierowca i sieczkarnia prowadzą – nie klikają w czasie pracy.** Aplikacja ma być super prosta: to, co da się
+  wykryć (pole, jazda, postój przy bazie), wykrywa telefon, a nie przycisk (decyzja z 2026-09-29: bez statusów kierowcy).
 
 ## 5. Zakres MVP (wersja 1)
 1. **Logowanie** numerem telefonu (SMS OTP).
@@ -45,7 +47,8 @@ Użytkownicy są **mocno nietechniczni**, często w rękawicach, w kabinie, w s�
    - nazwa pola (np. „Za lasem"), kolor, opcjonalnie punkt wjazdu (brama).
 5. **Mapa na żywo** – pozycje sieczkarni i kierowców (odświeżanie co ~10–30 s), podświetlone aktywne pole.
 6. **Automatyczne wykrywanie pola** – geofencing: „Sieczkarnia jest na polu: Za lasem".
-7. **Statusy kierowcy** – 3 duże przyciski: *Jadę na pole* / *Ładuję* / *Wiozę do bazy* (+ *Rozładunek*).
+7. ~~**Statusy kierowcy** – przyciski *Jadę na pole* / *Ładuję* / *Wiozę do bazy* / *Rozładunek*~~ – odrzucone:
+   kierowca prowadzi i nie będzie klikał. Gdzie jest i na którym polu – z lokalizacji (pkt 5–6).
 8. **Nawigacja** – przycisk „Prowadź do wjazdu" (intent do Google Maps).
 9. **Powiadomienia push** – „Sieczkarnia przejechała na pole: Przy drodze".
 
@@ -84,7 +87,6 @@ Farm/Harvest { id, name, ownerId, createdAt, active }
 Member       { userId, harvestId, displayName, phone, role: ADMIN|HARVESTER|DRIVER|BASE, vehicleName }
 Field        { id, harvestId, name, color, polygon: [LatLng], parcelIds: [String], entryPoint: LatLng?, status: PLANNED|ACTIVE|DONE, order }
 Location     { userId, harvestId, lat, lng, speed, heading, accuracy, timestamp, currentFieldId? }
-DriverStatus { userId, state: TO_FIELD|LOADING|TO_BASE|UNLOADING|IDLE, updatedAt }
 Event        { harvestId, type, userId, fieldId?, message?, timestamp }   // log / historia / kursy
 Invite       { code, harvestId, role?, expiresAt }
 ```
@@ -95,7 +97,7 @@ Invite       { code, harvestId, role?, expiresAt }
 3. **M2** – rysowanie/zapis pól lokalnie; import działki z ULDK.
 4. **M3** – Firebase Auth (SMS), zbiór, zaproszenia, role.
 5. **M4** – udostępnianie lokalizacji na żywo + geofencing „na którym polu".
-6. **M5** – statusy kierowcy, push, nawigacja do wjazdu.
+6. **M5** – push, nawigacja do wjazdu (bez statusów kierowcy – patrz §5 pkt 7).
 7. **M6** – testy w polu, poprawki UX, tryb offline.
 
 ## 10. Otwarte pytania

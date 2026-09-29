@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 data class BaseUiState(
     val harvesters: List<Coworker> = emptyList(),
-    /** Gdzie są kierowcy; kto wiezie ładunek – w M5 (statusy kierowców). */
+    /** Gdzie są kierowcy (na polu / w drodze) – bez klikania statusów, z ich lokalizacji. */
     val drivers: List<Coworker> = emptyList(),
 )
 
