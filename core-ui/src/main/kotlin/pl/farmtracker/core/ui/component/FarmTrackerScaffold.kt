@@ -157,20 +157,23 @@ fun RoleScaffold(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomAction = bottomAction,
-        actions = {
-            if (onSwitchRole != null) {
-                TextButton(
-                    onClick = onSwitchRole,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
-                ) {
-                    Icon(Icons.Filled.SwapHoriz, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.core_ui_switch_role), style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        },
+        actions = { if (onSwitchRole != null) SwitchRoleButton(onClick = onSwitchRole) },
         content = content,
     )
+}
+
+/** „Zmień rolę" w górnym pasku (tymczasowo, tylko w wersji debug) – także na ekranach ról z mapą. */
+@Composable
+fun SwitchRoleButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
+    ) {
+        Icon(Icons.Filled.SwapHoriz, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.core_ui_switch_role), style = MaterialTheme.typography.labelMedium)
+    }
 }
 
 @PreviewLightDark

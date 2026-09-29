@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -80,17 +81,21 @@ private val OverlaySpacing = 12.dp
  * Wspólny ekran z mapą: górny pasek z „Wróć", mapa na całą resztę ekranu, a na niej: warstwy u góry,
  * „Gdzie jestem" i treść ekranu ([panel]) na dole. Kamera wie, ile mapy zasłaniają przyciski,
  * więc pokazywane pola i działki trafiają w odkrytą część.
+ *
+ * @param onBack `null` – ekran bez „Wróć" (np. ekran roli w czasie pracy)
+ * @param actions przyciski po prawej w górnym pasku (np. „Zmień rolę")
  */
 @Composable
 fun MapScaffold(
     title: String,
     icon: ImageVector,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     chrome: MapChromeController,
     onMapTap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
     overlays: MapOverlays = MapOverlays(),
     showParcelsToggle: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {},
     panel: @Composable ColumnScope.() -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -118,7 +123,7 @@ fun MapScaffold(
 
     Scaffold(
         modifier = modifier,
-        topBar = { FarmTrackerTopBar(title = title, icon = icon, onBack = onBack) },
+        topBar = { FarmTrackerTopBar(title = title, icon = icon, onBack = onBack, actions = actions) },
     ) { innerPadding ->
         // Mapa sięga do dołu ekranu (pod pasek nawigacji systemu); przyciski go omijają.
         Box(Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {

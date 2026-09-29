@@ -1,6 +1,7 @@
 package pl.farmtracker.core.map
 
 import pl.farmtracker.core.domain.Field
+import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
@@ -31,3 +32,8 @@ data class MapPerson(
     val role: Role,
     val isStale: Boolean,
 )
+
+/** Inni pracujący na mapę – bez tego telefonu (pokazuje go niebieska kropka „ja") i bez pozycji sprzed wielu godzin. */
+fun List<LiveLocation>.toMapPeople(nowMillis: Long): List<MapPerson> =
+    filter { !it.isMe && !it.isGoneAt(nowMillis) }
+        .map { MapPerson(it.point, it.name, it.role, isStale = it.isStaleAt(nowMillis)) }

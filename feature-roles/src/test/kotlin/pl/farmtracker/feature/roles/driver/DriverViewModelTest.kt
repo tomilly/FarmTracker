@@ -10,6 +10,8 @@ import org.junit.Rule
 import org.junit.Test
 import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.map.CameraRequest
+import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakeWorkRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.feature.roles.common.Coworker
@@ -23,7 +25,7 @@ class DriverViewModelTest {
 
     private val crew = CrewFixture(myRole = Role.DRIVER)
     private val work = FakeWorkRepository()
-    private val viewModel by lazy { DriverViewModel(work, crew.watch) }
+    private val viewModel by lazy { DriverViewModel(work, crew.watch, FakeBaseRepository()) }
     private val state get() = viewModel.uiState.value
 
     private fun driverTest(body: suspend TestScope.() -> Unit) = runTest(mainDispatcherRule.testDispatcher) {
@@ -43,6 +45,24 @@ class DriverViewModelTest {
 
         viewModel.stopWork()
         assertFalse(work.isWorking.value)
+    }
+
+    @Test
+    fun `starting work shows the map following the driver`() = driverTest {
+        viewModel.startWork()
+
+        assertTrue(viewModel.chrome.state.value.pendingCameraRequest is CameraRequest.CenterOnMe)
+    }
+
+    @Test
+    fun `the map shows the harvester at work, not the driver's own dot`() = driverTest {
+        crew.locations.locations.value = listOf(crew.someone("Rysiek", Role.HARVESTER, crew.onTheField, fieldId = "f1"))
+        crew.locations.publish(PositionReport(crew.onTheRoad, null, crew.clock.now))
+        viewModel.overlays.launchIn(backgroundScope)
+
+        val overlays = viewModel.overlays.value
+        assertEquals(listOf("Rysiek"), overlays.people.map { it.name })
+        assertEquals(listOf(crew.field), overlays.fields)
     }
 
     @Test

@@ -112,7 +112,11 @@ internal fun StopWorkButton(onStopWork: () -> Unit, modifier: Modifier = Modifie
         OutlinedButton(
             onClick = { confirming = true },
             modifier = Modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = error),
+            // Nieprzezroczysty – czytelny także na mapie.
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = error,
+            ),
             border = BorderStroke(2.dp, error),
         ) {
             Icon(Icons.Filled.Stop, contentDescription = null)

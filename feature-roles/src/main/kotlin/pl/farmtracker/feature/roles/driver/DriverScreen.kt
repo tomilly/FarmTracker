@@ -13,8 +13,13 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.map.MapChromeController
+import pl.farmtracker.core.map.MapOverlays
+import pl.farmtracker.core.map.MapScaffold
+import pl.farmtracker.core.ui.RoleUi
 import pl.farmtracker.core.ui.component.RoleScaffold
 import pl.farmtracker.core.ui.component.StatusPill
+import pl.farmtracker.core.ui.component.SwitchRoleButton
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 import pl.farmtracker.feature.roles.common.Coworker
@@ -33,14 +38,56 @@ fun DriverScreen(
     viewModel: DriverViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DriverContent(
-        uiState = uiState,
-        onStartWork = viewModel::startWork,
-        onStopWork = viewModel::stopWork,
-        onOpenMap = onOpenMap,
-        onSwitchRole = onSwitchRole,
+    if (uiState.isWorking) {
+        val overlays by viewModel.overlays.collectAsStateWithLifecycle()
+        DriverWorkMap(
+            uiState = uiState,
+            chrome = viewModel.chrome,
+            overlays = overlays,
+            onStopWork = viewModel::stopWork,
+            onSwitchRole = onSwitchRole,
+            modifier = modifier,
+        )
+    } else {
+        DriverContent(
+            uiState = uiState,
+            onStartWork = viewModel::startWork,
+            onStopWork = viewModel::stopWork,
+            onOpenMap = onOpenMap,
+            onSwitchRole = onSwitchRole,
+            modifier = modifier,
+        )
+    }
+}
+
+/**
+ * Kierowca w pracy: mapa na cały ekran, jedzie za nim (niebieska kropka „ja"), z sieczkarnią i innymi.
+ * Na dole: gdzie jestem, gdzie sieczkarnia i mały „Kończę pracę".
+ */
+@Composable
+private fun DriverWorkMap(
+    uiState: DriverUiState,
+    chrome: MapChromeController,
+    overlays: MapOverlays,
+    onStopWork: () -> Unit,
+    onSwitchRole: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    MapScaffold(
+        title = stringResource(RoleUi.labelRes(Role.DRIVER)),
+        icon = RoleUi.icon(Role.DRIVER),
+        onBack = null,
+        chrome = chrome,
+        onMapTap = {},
         modifier = modifier,
-    )
+        overlays = overlays,
+        showParcelsToggle = false,
+        actions = { if (onSwitchRole != null) SwitchRoleButton(onClick = onSwitchRole) },
+    ) {
+        MyPositionPills(uiState.position)
+        CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
+        StopWorkButton(onStopWork = onStopWork)
+    }
 }
 
 /** Ekran kierowcy – celowo prosty: kierowca prowadzi, więc tylko „Zaczynam pracę", gdzie sieczkarnia i mapa. */
@@ -53,6 +100,7 @@ internal fun DriverContent(
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    // W pracy kierowca widzi mapę ([DriverWorkMap]); tu – przed pracą (i w podglądach).
     RoleScaffold(
         role = Role.DRIVER,
         onSwitchRole = onSwitchRole,

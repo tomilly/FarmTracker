@@ -120,6 +120,12 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
         }
     }
 
+    /**
+     * Mapa ma pokazywać mnie i jechać za mną (np. kierowca w czasie pracy) – także zanim wiadomo, czy jest zgoda
+     * na lokalizację: prośba czeka, aż mapa będzie mogła pokazać pozycję.
+     */
+    fun followMe() = _state.update { it.copy(cameraRequest = it.nextCenterOnMe()) }
+
     fun onWhereAmIClicked() = _state.update {
         if (it.locationAccess == LocationAccess.GRANTED) {
             it.copy(cameraRequest = it.nextCenterOnMe())

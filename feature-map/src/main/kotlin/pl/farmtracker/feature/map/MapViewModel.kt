@@ -21,6 +21,7 @@ import pl.farmtracker.core.domain.fieldAt
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapPerson
+import pl.farmtracker.core.map.toMapPeople
 import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.location.LiveLocationRepository
@@ -66,10 +67,7 @@ class MapViewModel @Inject constructor(
     /** Inni pracujący (siebie pokazuje niebieska kropka „ja"); pozycja sprzed wielu godzin znika. */
     val people: StateFlow<List<MapPerson>> =
         combine(liveLocationRepository.locations, clock.ticks()) { locations, now ->
-            val current = maxOf(now, clock.nowMillis())
-            locations
-                .filter { !it.isMe && !it.isGoneAt(current) }
-                .map { MapPerson(it.point, it.name, it.role, isStale = it.isStaleAt(current)) }
+            locations.toMapPeople(maxOf(now, clock.nowMillis()))
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Pola zmienia tylko admin – pozostałe role widzą przy polu sam opis. */

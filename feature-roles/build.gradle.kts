@@ -10,6 +10,7 @@ android {
 
 dependencies {
     implementation(projects.coreUi)
+    implementation(projects.coreMap)
     implementation(projects.data)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
