@@ -17,6 +17,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import pl.farmtracker.app.BuildConfig
+import pl.farmtracker.feature.auth.login.LoginScreen
+import pl.farmtracker.feature.auth.onboarding.OnboardingScreen
 import pl.farmtracker.feature.fields.base.BaseEditorScreen
 import pl.farmtracker.feature.fields.editor.FieldEditorScreen
 import pl.farmtracker.feature.fields.list.FieldsListScreen
@@ -27,6 +29,7 @@ import pl.farmtracker.feature.roles.base.BaseScreen
 import pl.farmtracker.feature.roles.driver.DriverScreen
 import pl.farmtracker.feature.roles.harvester.HarvesterScreen
 import pl.farmtracker.feature.roles.picker.RolePickerScreen
+import pl.farmtracker.feature.team.TeamScreen
 
 @Composable
 fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
@@ -37,6 +40,8 @@ fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
         is AppUiState.Ready -> FarmTrackerNavHost(
             destination = state.destination,
             onSwitchRole = if (BuildConfig.DEBUG) viewModel::switchRole else null,
+            // „Ludzie" działa tylko ze wspólnym zbiorem – bez Firebase zostaje „wkrótce".
+            peopleEnabled = BuildConfig.SHARED_HARVEST,
         )
     }
 }
@@ -45,13 +50,21 @@ fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
 private fun FarmTrackerNavHost(
     destination: AppDestination,
     onSwitchRole: (() -> Unit)?,
+    peopleEnabled: Boolean,
     navController: NavHostController = rememberNavController(),
 ) {
     val startDestination = remember { destination }
 
     val openMap = { navController.navigate(MapDestination) { launchSingleTop = true } }
+    val openPeople = if (peopleEnabled) {
+        { navController.navigate(TeamDestination) { launchSingleTop = true } }
+    } else {
+        null
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
+        composable<LoginDestination> { LoginScreen() }
+        composable<OnboardingDestination> { OnboardingScreen() }
         composable<RolePickerDestination> { RolePickerScreen() }
         composable<HarvesterDestination> { HarvesterScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
         composable<DriverDestination> { DriverScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
@@ -60,6 +73,7 @@ private fun FarmTrackerNavHost(
             AdminScreen(
                 onOpenFields = { navController.navigate(FieldsListDestination) { launchSingleTop = true } },
                 onOpenBase = { navController.navigate(BaseSetupDestination) { launchSingleTop = true } },
+                onOpenPeople = openPeople,
                 onSwitchRole = onSwitchRole,
             )
         }
@@ -77,6 +91,7 @@ private fun FarmTrackerNavHost(
                 onShowMap = openMap,
             )
         }
+        composable<TeamDestination> { TeamScreen(onBack = { navController.popBackStack() }) }
         composable<BaseSetupDestination> {
             BaseEditorScreen(
                 onBack = { navController.popBackStack() },

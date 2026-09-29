@@ -22,12 +22,14 @@ import pl.farmtracker.feature.roles.R
 
 /**
  * Menu admina – płaskie (BRIEF §4). Na razie bez ViewModelu. „Pola" i „Baza" – miejsca zbioru;
- * ekrany Ludzie / Ustawienia (M3) powstaną jako osobne moduły feature.
+ * „Ludzie" – zaproszenia i role (feature-team); „Ustawienia" jeszcze „wkrótce".
  */
 @Composable
 fun AdminScreen(
     onOpenFields: () -> Unit,
     onOpenBase: () -> Unit,
+    /** `null` – „Ludzie" jeszcze niedostępne (bez wspólnego zbioru): pokazujemy „wkrótce". */
+    onOpenPeople: (() -> Unit)?,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -55,7 +57,7 @@ fun AdminScreen(
         BigActionButton(
             text = stringResource(R.string.roles_admin_people),
             icon = Icons.Filled.Groups,
-            onClick = showComingSoon,
+            onClick = onOpenPeople ?: showComingSoon,
         )
         BigActionButton(
             text = stringResource(R.string.roles_admin_settings),
@@ -69,6 +71,6 @@ fun AdminScreen(
 @Composable
 private fun AdminScreenPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        AdminScreen(onOpenFields = {}, onOpenBase = {}, onSwitchRole = {})
+        AdminScreen(onOpenFields = {}, onOpenBase = {}, onOpenPeople = {}, onSwitchRole = {})
     }
 }

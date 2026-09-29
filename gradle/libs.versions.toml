@@ -19,6 +19,8 @@ kotlinxSerialization = "1.11.0"
 coroutines = "1.11.0"
 okio = "3.18.2"
 maplibre = "13.6.1"
+firebaseBom = "34.19.0"
+googleServices = "4.5.0"
 
 junit = "4.13.2"
 turbine = "1.2.1"
@@ -33,6 +35,10 @@ androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifec
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 androidx-datastore-core-okio = { module = "androidx.datastore:datastore-core-okio", version.ref = "datastore" }
 maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutines" }
 
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
@@ -70,6 +76,7 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 
 # Convention plugins (build-logic)
 farmtracker-android-application = { id = "farmtracker.android.application" }

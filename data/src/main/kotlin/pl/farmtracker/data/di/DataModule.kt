@@ -11,10 +11,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import pl.farmtracker.data.base.BaseRepository
-import pl.farmtracker.data.base.DataStoreBaseRepository
-import pl.farmtracker.data.field.DataStoreFieldRepository
-import pl.farmtracker.data.field.FieldRepository
+import pl.farmtracker.data.auth.AuthRepository
+import pl.farmtracker.data.auth.FirebaseAuthRepository
+import pl.farmtracker.data.harvest.FirestoreHarvestRepository
+import pl.farmtracker.data.harvest.HarvestRepository
 import pl.farmtracker.data.network.HttpGet
 import pl.farmtracker.data.network.UrlConnectionHttpGet
 import pl.farmtracker.data.parcel.ParcelRepository
@@ -35,11 +35,14 @@ internal interface DataModule {
     @Binds
     fun bindParcelRepository(impl: UldkParcelRepository): ParcelRepository
 
-    @Binds
-    fun bindFieldRepository(impl: DataStoreFieldRepository): FieldRepository
+    // Pola i baza: na telefonie albo w zbiorze (Firestore) – wybiera aplikacja (moduł app), bo zależy to od
+    // tego, czy jest skonfigurowany Firebase.
 
     @Binds
-    fun bindBaseRepository(impl: DataStoreBaseRepository): BaseRepository
+    fun bindAuthRepository(impl: FirebaseAuthRepository): AuthRepository
+
+    @Binds
+    fun bindHarvestRepository(impl: FirestoreHarvestRepository): HarvestRepository
 
     @Binds
     fun bindPlaceRepository(impl: NominatimPlaceRepository): PlaceRepository

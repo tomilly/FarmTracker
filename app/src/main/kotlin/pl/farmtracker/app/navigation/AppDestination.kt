@@ -7,6 +7,15 @@ import pl.farmtracker.core.domain.Role
 @Serializable
 sealed interface AppDestination
 
+/** Logowanie numerem telefonu (wspólny zbiór). */
+@Serializable
+data object LoginDestination : AppDestination
+
+/** Po zalogowaniu, bez zbioru: imię, kod zaproszenia albo nowy zbiór. */
+@Serializable
+data object OnboardingDestination : AppDestination
+
+/** Wybór roli: bez Firebase – zamiast logowania; z Firebase – tylko w wersji testowej („Zmień rolę"). */
 @Serializable
 data object RolePickerDestination : AppDestination
 
@@ -25,6 +34,10 @@ data object AdminDestination : AppDestination
 /** Mapa otwierana z ekranu roli („Mapa"); nie jest ekranem startowym żadnej roli. */
 @Serializable
 data object MapDestination
+
+/** Ludzie w zbiorze i zaproszenia (admin → „Ludzie"). */
+@Serializable
+data object TeamDestination
 
 /** Lista pól zbioru (admin → „Pola"). */
 @Serializable

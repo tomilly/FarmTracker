@@ -1,0 +1,73 @@
+rules_version = '2';
+
+// Reguły dostępu FarmTracker. Wkleić w konsoli Firebase: Firestore Database → Reguły → Opublikuj.
+// Zasada: każdy widzi tylko swój zbiór; pola, bazę, zaproszenia i ludzi zmienia tylko admin zbioru.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberDoc(harvestId) {
+      return /databases/$(database)/documents/harvests/$(harvestId)/members/$(request.auth.uid);
+    }
+
+    function isMember(harvestId) {
+      return signedIn() && exists(memberDoc(harvestId));
+    }
+
+    function isAdmin(harvestId) {
+      return isMember(harvestId) && get(memberDoc(harvestId)).data.role == 'ADMIN';
+    }
+
+    function validRole(role) {
+      return role in ['ADMIN', 'HARVESTER', 'DRIVER', 'BASE'];
+    }
+
+    // Dołączenie kodem: zaproszenie istnieje, jest do tego zbioru, na tę rolę i jeszcze ważne.
+    function joinsWithInvite(harvestId, data) {
+      let invite = get(/databases/$(database)/documents/invites/$(data.inviteCode)).data;
+      return invite.harvestId == harvestId && invite.role == data.role && invite.expiresAt > request.time;
+    }
+
+    // Do którego zbioru należę – tylko ja.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Zaproszenie czyta się po kodzie (bez listowania wszystkich); tworzy i kasuje admin.
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow create: if isAdmin(request.resource.data.harvestId) && validRole(request.resource.data.role);
+      allow delete: if isAdmin(resource.data.harvestId);
+    }
+
+    match /harvests/{harvestId} {
+      allow read: if isMember(harvestId);
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin(harvestId);
+
+      match /members/{uid} {
+        allow read: if isMember(harvestId);
+        allow create: if validRole(request.resource.data.role) && (
+          // Zakładający zbiór zostaje adminem (zbiór powstaje w tym samym zapisie).
+          (uid == request.auth.uid && request.resource.data.role == 'ADMIN'
+            && getAfter(/databases/$(database)/documents/harvests/$(harvestId)).data.ownerId == request.auth.uid)
+          // Dołączenie kodem zaproszenia – na rolę z zaproszenia.
+          || (uid == request.auth.uid && joinsWithInvite(harvestId, request.resource.data))
+          // Admin przywraca usuniętą osobę („Cofnij").
+          || isAdmin(harvestId)
+        );
+        allow update: if isAdmin(harvestId) && validRole(request.resource.data.role);
+        // Admin usuwa innych; każdy może sam wyjść ze zbioru.
+        allow delete: if isAdmin(harvestId) || (signedIn() && uid == request.auth.uid);
+      }
+
+      match /fields/{fieldId} {
+        allow read: if isMember(harvestId);
+        allow write: if isAdmin(harvestId);
+      }
+    }
+  }
+}
