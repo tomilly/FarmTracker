@@ -12,7 +12,9 @@ if (firebaseConfigured) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
 }
 // `-Pfarmtracker.localOnly` – mimo pliku wersja bez wspólnego zbioru (np. próby na emulatorze bez logowania).
-val sharedHarvest = firebaseConfigured && !providers.gradleProperty("farmtracker.localOnly").isPresent
+// `-Pfarmtracker.demo` – wersja pokazowa: lokalna, z udawaną sieczkarnią na pierwszym polu (nagrania, próby „ładuje").
+val demo = providers.gradleProperty("farmtracker.demo").isPresent
+val sharedHarvest = firebaseConfigured && !demo && !providers.gradleProperty("farmtracker.localOnly").isPresent
 
 android {
     namespace = "pl.farmtracker.app"
@@ -22,6 +24,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("boolean", "SHARED_HARVEST", sharedHarvest.toString())
+        buildConfigField("boolean", "DEMO", demo.toString())
     }
 
     buildFeatures {

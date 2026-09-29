@@ -14,6 +14,9 @@ import pl.farmtracker.data.field.FirestoreFieldRepository
 import pl.farmtracker.data.location.FirestoreLiveLocationRepository
 import pl.farmtracker.data.location.LiveLocationRepository
 import pl.farmtracker.data.location.LocalLiveLocationRepository
+import pl.farmtracker.data.time.Clock
+import pl.farmtracker.app.demo.DemoLiveLocationRepository
+import javax.inject.Singleton
 import javax.inject.Provider
 import javax.inject.Qualifier
 
@@ -48,9 +51,17 @@ object StorageModule {
     ): BaseRepository = if (shared) firestore.get() else local.get()
 
     @Provides
+    @Singleton
     fun provideLiveLocationRepository(
         @SharedHarvest shared: Boolean,
         firestore: Provider<FirestoreLiveLocationRepository>,
         local: Provider<LocalLiveLocationRepository>,
-    ): LiveLocationRepository = if (shared) firestore.get() else local.get()
+        fields: Provider<FieldRepository>,
+        base: Provider<BaseRepository>,
+        clock: Clock,
+    ): LiveLocationRepository = when {
+        shared -> firestore.get()
+        BuildConfig.DEMO -> DemoLiveLocationRepository(local.get(), fields.get(), base.get(), clock)
+        else -> local.get()
+    }
 }
