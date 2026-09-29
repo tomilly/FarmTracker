@@ -194,7 +194,10 @@ private fun ColumnScope.MapHints(chrome: MapChromeState, onOpenSettings: () -> U
     }
 }
 
-/** Warstwy w jednym rzędzie u góry mapy: „Mapa" / „Zdjęcie" i włącznik „Działki". */
+/**
+ * Warstwy u góry mapy, małe przyciski w rogu (mało zasłaniają): jeden przełącznik „Zdjęcie" ↔ „Mapa" – z podpisem,
+ * na co się przełączy – i włącznik „Działki".
+ */
 @Composable
 internal fun MapLayerBar(
     chrome: MapChromeState,
@@ -204,19 +207,12 @@ internal fun MapLayerBar(
     showParcelsToggle: Boolean = true,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val photo = chrome.baseLayer == BaseLayer.PHOTO
         MapChip(
-            text = stringResource(R.string.core_map_layer_map),
-            icon = Icons.Filled.Map,
-            isSelected = chrome.baseLayer == BaseLayer.MAP,
-            onClick = { onSelectBaseLayer(BaseLayer.MAP) },
-            modifier = Modifier.weight(1f),
-        )
-        MapChip(
-            text = stringResource(R.string.core_map_layer_photo),
-            icon = Icons.Filled.Satellite,
-            isSelected = chrome.baseLayer == BaseLayer.PHOTO,
-            onClick = { onSelectBaseLayer(BaseLayer.PHOTO) },
-            modifier = Modifier.weight(1f),
+            text = stringResource(if (photo) R.string.core_map_layer_map else R.string.core_map_layer_photo),
+            icon = if (photo) Icons.Filled.Map else Icons.Filled.Satellite,
+            isSelected = null,
+            onClick = { onSelectBaseLayer(if (photo) BaseLayer.MAP else BaseLayer.PHOTO) },
         )
         if (showParcelsToggle) {
             MapChip(
@@ -224,7 +220,6 @@ internal fun MapLayerBar(
                 icon = if (chrome.showParcels) Icons.Filled.CheckCircle else Icons.Filled.GridOn,
                 isSelected = chrome.showParcels,
                 onClick = onToggleParcels,
-                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -233,27 +228,32 @@ internal fun MapLayerBar(
 /**
  * Przycisk na mapie: nieprzezroczysty i z cieniem – czytelny na zdjęciu lotniczym.
  * Włączony = wypełniony kolorem, wyłączony = biały z obrysem.
+ *
+ * @param isSelected `null` – zwykły przycisk (bez stanu włączony/wyłączony)
  */
 @Composable
 private fun MapChip(
     text: String,
     icon: ImageVector,
-    isSelected: Boolean,
+    isSelected: Boolean?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val filled = isSelected == true
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget).semantics { selected = isSelected },
+        modifier = modifier
+            .heightIn(min = FarmTrackerDimens.MinTouchTarget)
+            .then(if (isSelected != null) Modifier.semantics { selected = isSelected } else Modifier),
         shape = MaterialTheme.shapes.medium,
-        color = if (isSelected) colors.primary else colors.surface,
-        contentColor = if (isSelected) colors.onPrimary else colors.onSurface,
-        border = if (isSelected) null else BorderStroke(2.dp, colors.outline),
+        color = if (filled) colors.primary else colors.surface,
+        contentColor = if (filled) colors.onPrimary else colors.onSurface,
+        border = if (filled) null else BorderStroke(2.dp, colors.outline),
         shadowElevation = 4.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
