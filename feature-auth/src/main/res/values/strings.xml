@@ -38,4 +38,15 @@
     <string name="onboarding_create_button">Załóż zbiór</string>
     <string name="onboarding_creating">Zakładam zbiór…</string>
     <string name="onboarding_admin_note">Będziesz adminem: dodasz pola i zaprosisz ludzi.</string>
+
+    <!-- Ustawienia -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_harvest">Zbiór: %1$s</string>
+    <string name="settings_role">Rola: %1$s</string>
+    <string name="settings_sign_out">Wyloguj się</string>
+    <string name="settings_signing_out">Wylogowuję…</string>
+    <string name="settings_sign_out_question">Wylogować się?</string>
+    <string name="settings_sign_out_explanation">Żeby wrócić, trzeba będzie znów wpisać kod z SMS-a.</string>
+    <string name="settings_sign_out_confirm">Tak, wyloguj</string>
+    <string name="settings_sign_out_cancel">Zostaję</string>
 </resources>

@@ -60,7 +60,9 @@ z „Cofnij"). Firebase: `data/.../auth/FirebaseAuthRepository`, `data/.../harve
 reguły w `firestore.rules` (wkleja się w konsoli). Tryb zależy od `app/google-services.json` (nie w repo – repo
 publiczne): jest → `BuildConfig.SHARED_HARVEST` i wspólny zbiór; brak → jak przed M3 (wybór roli, dane lokalne).
 Wybór w `app/.../di/StorageModule`. W debug „Zmień rolę" przykrywa rolę ze zbioru tylko na tym telefonie.
-`-Pfarmtracker.localOnly` buduje wersję lokalną mimo pliku (próby na emulatorze bez logowania).
+`-Pfarmtracker.localOnly` buduje wersję lokalną mimo pliku (próby na emulatorze bez logowania); `-Pfarmtracker.demo` – lokalna
+z udawaną sieczkarnią „Rysiek" (`app/.../demo`). Admin → „Ustawienia" (`feature-auth/settings`): konto i „Wyloguj się"
+(kończy pracę, zdejmuje pozycję, potem wylogowuje).
 M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokalizację i powiadomienie, ustawia
 `WorkRepository.isWorking`; `MainActivity` (gdy na wierzchu) włącza `feature-work/WorkService` (usługa pierwszoplanowa
 „location", stałe powiadomienie z polem i „Kończę pracę"; kończy się sama po `isWorking = false`).

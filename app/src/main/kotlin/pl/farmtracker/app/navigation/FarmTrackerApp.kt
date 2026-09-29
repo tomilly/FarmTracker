@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import pl.farmtracker.app.BuildConfig
 import pl.farmtracker.feature.auth.login.LoginScreen
 import pl.farmtracker.feature.auth.onboarding.OnboardingScreen
+import pl.farmtracker.feature.auth.settings.SettingsScreen
 import pl.farmtracker.feature.fields.base.BaseEditorScreen
 import pl.farmtracker.feature.fields.editor.FieldEditorScreen
 import pl.farmtracker.feature.fields.list.FieldsListScreen
@@ -40,7 +41,7 @@ fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
         is AppUiState.Ready -> FarmTrackerNavHost(
             destination = state.destination,
             onSwitchRole = if (BuildConfig.DEBUG) viewModel::switchRole else null,
-            // „Ludzie" działa tylko ze wspólnym zbiorem – bez Firebase zostaje „wkrótce".
+            // „Ludzie" i „Ustawienia" (konto) działają tylko ze wspólnym zbiorem – bez Firebase zostają „wkrótce".
             peopleEnabled = BuildConfig.SHARED_HARVEST,
         )
     }
@@ -61,6 +62,11 @@ private fun FarmTrackerNavHost(
     } else {
         null
     }
+    val openSettings = if (peopleEnabled) {
+        { navController.navigate(SettingsDestination) { launchSingleTop = true } }
+    } else {
+        null
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable<LoginDestination> { LoginScreen() }
@@ -74,9 +80,11 @@ private fun FarmTrackerNavHost(
                 onOpenFields = { navController.navigate(FieldsListDestination) { launchSingleTop = true } },
                 onOpenBase = { navController.navigate(BaseSetupDestination) { launchSingleTop = true } },
                 onOpenPeople = openPeople,
+                onOpenSettings = openSettings,
                 onSwitchRole = onSwitchRole,
             )
         }
+        composable<SettingsDestination> { SettingsScreen(onBack = { navController.popBackStack() }) }
         composable<MapDestination> {
             MapScreen(
                 onBack = { navController.popBackStack() },

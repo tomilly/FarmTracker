@@ -39,6 +39,10 @@ data object MapDestination
 @Serializable
 data object TeamDestination
 
+/** Konto i wylogowanie (admin → „Ustawienia"). */
+@Serializable
+data object SettingsDestination
+
 /** Lista pól zbioru (admin → „Pola"). */
 @Serializable
 data object FieldsListDestination
