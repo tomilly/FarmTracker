@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
@@ -51,6 +52,9 @@ class FirestoreLiveLocationRepository @Inject constructor(
                 .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }
         }
     }
+        // Na start „nikt nie pracuje" – ekrany łączą pozycje z innymi danymi i nie mogą czekać na nie
+        // (np. gdy serwer chwilę odmawia, a nasłuch próbuje ponownie).
+        .onStart { emit(emptyList()) }
 
     override suspend fun publish(report: PositionReport) {
         val membership = currentMembership() ?: return
