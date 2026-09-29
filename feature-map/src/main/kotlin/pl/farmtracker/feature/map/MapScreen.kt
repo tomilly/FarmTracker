@@ -64,6 +64,7 @@ fun MapScreen(
     val selectedField by viewModel.selectedField.collectAsStateWithLifecycle()
     val canEditFields by viewModel.canEditFields.collectAsStateWithLifecycle()
     val base by viewModel.base.collectAsStateWithLifecycle()
+    val people by viewModel.people.collectAsStateWithLifecycle()
 
     MapScaffold(
         title = stringResource(R.string.map_title),
@@ -76,6 +77,7 @@ fun MapScreen(
             highlight = selectedField?.shape ?: selection.selectedParcel?.shape.orEmpty(),
             entryPoints = fields.flatMap { it.entryPoints },
             base = base,
+            people = people,
         ),
         modifier = modifier,
     ) {

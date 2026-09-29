@@ -12,15 +12,20 @@ import org.junit.Rule
 import org.junit.Test
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
+import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.geo.GeoBounds
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.domain.geo.bounds
 import pl.farmtracker.core.map.CameraRequest
+import pl.farmtracker.core.map.MapPerson
 import pl.farmtracker.core.testing.FakeBaseRepository
+import pl.farmtracker.core.testing.FakeClock
 import pl.farmtracker.core.testing.FakeFieldRepository
+import pl.farmtracker.core.testing.FakeLiveLocationRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
 import pl.farmtracker.core.testing.FakeSessionRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
@@ -35,7 +40,11 @@ class MapViewModelTest {
     // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
     private val session = FakeSessionRepository(Role.DRIVER)
     private val fieldsRepo = FakeFieldRepository()
-    private val viewModel by lazy { MapViewModel(parcels, fieldsRepo, session, FakeBaseRepository()) }
+    private val locations = FakeLiveLocationRepository(myRole = Role.DRIVER)
+    private val clock = FakeClock(now = 1_000_000)
+    private val viewModel by lazy {
+        MapViewModel(parcels, fieldsRepo, session, FakeBaseRepository(), locations, clock)
+    }
     private val selection get() = viewModel.parcelSelection.value
 
     private val tapPoint = GeoPoint(latitude = 50.98, longitude = 17.42)
@@ -185,4 +194,27 @@ class MapViewModelTest {
 
         assertTrue(viewModel.canEditFields.value)
     }
+
+    private fun someone(name: String, role: Role, minutesAgo: Int) =
+        LiveLocation(name, name, role, inField, timeMillis = clock.now - minutesAgo * 60_000L)
+
+    @Test
+    fun `the map shows the others at work - old positions greyed, forgotten ones gone`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            locations.locations.value = listOf(
+                someone("Rysiek", Role.HARVESTER, minutesAgo = 0),
+                someone("Marek", Role.DRIVER, minutesAgo = 5),
+                someone("Janek", Role.DRIVER, minutesAgo = 13 * 60),
+            )
+            locations.publish(PositionReport(tapPoint, fieldId = null, timeMillis = clock.now))
+            viewModel.people.launchIn(backgroundScope)
+
+            assertEquals(
+                listOf(
+                    MapPerson(inField, "Rysiek", Role.HARVESTER, isStale = false),
+                    MapPerson(inField, "Marek", Role.DRIVER, isStale = true),
+                ),
+                viewModel.people.value,
+            )
+        }
 }

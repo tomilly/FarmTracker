@@ -73,10 +73,12 @@ import org.maplibre.geojson.MultiPolygon
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 import pl.farmtracker.core.domain.Field
+import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.ui.FieldColorUi
+import pl.farmtracker.core.ui.RoleUi
 import java.util.Locale
 
 private val PolandCenter = LatLng(52.07, 19.48)
@@ -114,6 +116,14 @@ private const val ENTRY_LABEL_OFFSET = 1.1f
 private const val BASE_COLOR = "#212121"
 private const val BASE_RADIUS = 15f
 private const val BASE_LABEL_SIZE = 17f
+
+// Ludzie: sieczkarnia pomarańczowa (maszyna, jak na polu), kierowcy granatowi, pozycja sprzed kilku minut szara.
+private val PERSON_COLORS = mapOf(Role.HARVESTER to "#E65100", Role.DRIVER to "#1A237E")
+private const val PERSON_OTHER_COLOR = "#424242"
+private const val PERSON_STALE_COLOR = "#9E9E9E"
+private const val PERSON_RADIUS = 13f
+private const val PERSON_COLOR_PROPERTY = "color"
+private const val PERSON_LABEL_PROPERTY = "label"
 
 /** Pasy mapy (w pikselach) zasłonięte przez przyciski u góry i na dole. */
 internal data class MapCovered(val top: Int = 0, val bottom: Int = 0) {
@@ -221,6 +231,12 @@ internal fun FarmMap(
     LaunchedEffect(style, overlays.base) {
         style?.getSourceAs<GeoJsonSource>(MapSources.BASE_SOURCE_ID)
             ?.setGeoJson(listOfNotNull(overlays.base).toPointsFeatureCollection())
+    }
+
+    val roleLabels = Role.entries.associateWith { stringResource(RoleUi.labelRes(it)) }
+    LaunchedEffect(style, overlays.people) {
+        style?.getSourceAs<GeoJsonSource>(MapSources.PEOPLE_SOURCE_ID)
+            ?.setGeoJson(overlays.people.toPeopleFeatureCollection(roleLabels))
     }
 
     LaunchedEffect(style, overlays.highlight) {
@@ -451,11 +467,46 @@ private fun Style.addFarmLayers(entryLabel: String, baseLabel: String) {
         )
     addLayerAbove(baseCircle, MapSources.ENTRIES_CIRCLE_LAYER_ID)
 
-    // Napisy (nazwy pól, „Wjazd", „Baza") na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
+    addSource(GeoJsonSource(MapSources.PEOPLE_SOURCE_ID))
+    val peopleCircles = CircleLayer(MapSources.PEOPLE_CIRCLE_LAYER_ID, MapSources.PEOPLE_SOURCE_ID)
+        .withProperties(
+            circleRadius(PERSON_RADIUS),
+            circleColor(Expression.toColor(Expression.get(PERSON_COLOR_PROPERTY))),
+            circleStrokeColor(Color.WHITE),
+            circleStrokeWidth(ENTRY_STROKE),
+        )
+    val peopleLabels = SymbolLayer(MapSources.PEOPLE_LABEL_LAYER_ID, MapSources.PEOPLE_SOURCE_ID)
+        .withProperties(
+            textField(Expression.get(PERSON_LABEL_PROPERTY)),
+            textFont(arrayOf(FIELD_LABEL_FONT)),
+            textSize(ENTRY_LABEL_SIZE),
+            textColor(Color.WHITE),
+            textHaloColor(Color.BLACK),
+            textHaloWidth(FIELD_LABEL_HALO),
+            textOffset(arrayOf(0f, ENTRY_LABEL_OFFSET)),
+            textAnchor(Property.TEXT_ANCHOR_TOP),
+            // Kto gdzie jest – ważniejsze niż nazwa pola, więc zawsze widoczne.
+            textAllowOverlap(true),
+        )
+    addLayerAbove(peopleCircles, MapSources.BASE_CIRCLE_LAYER_ID)
+
+    // Napisy (nazwy pól, „Wjazd", „Baza", ludzie) na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
     addLayer(fieldsLabel)
     addLayer(entryLabels)
     addLayer(baseLabels)
+    addLayer(peopleLabels)
 }
+
+private fun List<MapPerson>.toPeopleFeatureCollection(roleLabels: Map<Role, String>): FeatureCollection =
+    FeatureCollection.fromFeatures(
+        map { person ->
+            Feature.fromGeometry(Point.fromLngLat(person.point.longitude, person.point.latitude)).apply {
+                val color = if (person.isStale) PERSON_STALE_COLOR else PERSON_COLORS[person.role] ?: PERSON_OTHER_COLOR
+                addStringProperty(PERSON_COLOR_PROPERTY, color)
+                addStringProperty(PERSON_LABEL_PROPERTY, "${person.name}\n${roleLabels[person.role].orEmpty()}")
+            }
+        },
+    )
 
 private fun List<GeoPoint>.toDraftFeatureCollection(): FeatureCollection {
     val points = map { Point.fromLngLat(it.longitude, it.latitude) }

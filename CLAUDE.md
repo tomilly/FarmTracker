@@ -57,6 +57,14 @@ z „Cofnij"). Firebase: `data/.../auth/FirebaseAuthRepository`, `data/.../harve
 reguły w `firestore.rules` (wkleja się w konsoli). Tryb zależy od `app/google-services.json` (nie w repo – repo
 publiczne): jest → `BuildConfig.SHARED_HARVEST` i wspólny zbiór; brak → jak przed M3 (wybór roli, dane lokalne).
 Wybór w `app/.../di/StorageModule`. W debug „Zmień rolę" przykrywa rolę ze zbioru tylko na tym telefonie.
+`-Pfarmtracker.localOnly` buduje wersję lokalną mimo pliku (próby na emulatorze bez logowania).
+M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokalizację i powiadomienie, ustawia
+`WorkRepository.isWorking`; `MainActivity` (gdy na wierzchu) włącza `feature-work/WorkService` (usługa pierwszoplanowa
+„location", stałe powiadomienie z polem i „Kończę pracę"; kończy się sama po `isWorking = false`).
+`LocationPublisher`: GPS → pole (`fieldWith`, 30 m zapasu przy wyjeździe) → wysyłka tylko gdy trzeba
+(`PositionReport.needsUpdate`). Pozycje: `LiveLocationRepository` – Firestore `harvests/{id}/locations/{uid}`
+albo lokalnie (tylko własna). Ekrany ról: „Jesteś na polu: …", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
+mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 12 h.
 Kamienie milowe: docs/BRIEF.md §9.
 
 ## Emulator (uwagi)

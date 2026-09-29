@@ -61,16 +61,14 @@ internal fun StartWorkButton(onStartWork: () -> Unit, modifier: Modifier = Modif
             text = stringResource(R.string.roles_start_work),
             icon = Icons.Filled.PlayArrow,
             onClick = {
-                if (context.hasLocationPermission()) {
+                // Pyta tylko o brakujące. Odmowa powiadomienia nie blokuje pracy – ekran roli i tak pokazuje,
+                // że lokalizacja jest włączona; bez zgody na lokalizację praca się nie zaczyna.
+                val missing = context.missingWorkPermissions()
+                if (missing.isEmpty()) {
                     denied = false
                     onStartWork()
                 } else {
-                    val notifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        listOf(Manifest.permission.POST_NOTIFICATIONS)
-                    } else {
-                        emptyList()
-                    }
-                    launcher.launch((LocationPermissions + notifications).toTypedArray())
+                    launcher.launch(missing.toTypedArray())
                 }
             },
             tone = Tone.Go,
@@ -151,8 +149,23 @@ internal fun CoworkerPills(role: Role, coworkers: List<Coworker>, modifier: Modi
     }
 }
 
-private fun Context.hasLocationPermission(): Boolean =
-    LocationPermissions.any { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+private fun Context.isGranted(permission: String): Boolean =
+    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+private fun Context.hasLocationPermission(): Boolean = LocationPermissions.any { isGranted(it) }
+
+/** Lokalizacja (gdy nie ma żadnej) i powiadomienie o pracy (Android 13+), o które jeszcze nie zapytano skutecznie. */
+private fun Context.missingWorkPermissions(): List<String> {
+    val location = if (hasLocationPermission()) emptyList() else LocationPermissions
+    val notifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        !isGranted(Manifest.permission.POST_NOTIFICATIONS)
+    ) {
+        listOf(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        emptyList()
+    }
+    return location + notifications
+}
 
 private fun Context.openAppSettings() {
     startActivity(

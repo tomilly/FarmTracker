@@ -20,8 +20,12 @@ import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.fieldAt
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.MapChromeController
+import pl.farmtracker.core.map.MapPerson
 import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.field.FieldRepository
+import pl.farmtracker.data.location.LiveLocationRepository
+import pl.farmtracker.data.time.Clock
+import pl.farmtracker.data.time.ticks
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelRepository
 import pl.farmtracker.data.session.SessionRepository
@@ -44,6 +48,8 @@ class MapViewModel @Inject constructor(
     fieldRepository: FieldRepository,
     sessionRepository: SessionRepository,
     baseRepository: BaseRepository,
+    liveLocationRepository: LiveLocationRepository,
+    clock: Clock,
 ) : ViewModel() {
 
     val chrome = MapChromeController()
@@ -56,6 +62,15 @@ class MapViewModel @Inject constructor(
     val base: StateFlow<GeoPoint?> = baseRepository.base
         .map { it?.location }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Inni pracujący (siebie pokazuje niebieska kropka „ja"); pozycja sprzed wielu godzin znika. */
+    val people: StateFlow<List<MapPerson>> =
+        combine(liveLocationRepository.locations, clock.ticks()) { locations, now ->
+            val current = maxOf(now, clock.nowMillis())
+            locations
+                .filter { !it.isMe && !it.isGoneAt(current) }
+                .map { MapPerson(it.point, it.name, it.role, isStale = it.isStaleAt(current)) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Pola zmienia tylko admin – pozostałe role widzą przy polu sam opis. */
     val canEditFields: StateFlow<Boolean> = sessionRepository.currentRole
