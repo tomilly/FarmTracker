@@ -1,5 +1,6 @@
 package pl.farmtracker.data.auth
 
+import android.util.Log
 import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.FirebaseTooManyRequestsException
@@ -81,6 +82,7 @@ class FirebaseAuthRepository @Inject constructor(
         } catch (error: FirebaseAuthInvalidCredentialsException) {
             if (error.errorCode == "ERROR_SESSION_EXPIRED") VerifyCodeResult.Expired else VerifyCodeResult.WrongCode
         } catch (error: FirebaseException) {
+            Log.w(TAG, "Nie sprawdzono kodu SMS", error)
             VerifyCodeResult.Unavailable
         }
     }
@@ -91,14 +93,19 @@ class FirebaseAuthRepository @Inject constructor(
         resendToken = null
     }
 
-    private fun FirebaseException.toSendCodeResult(): SendCodeResult = when (this) {
-        is FirebaseAuthInvalidCredentialsException -> SendCodeResult.InvalidNumber
-        is FirebaseTooManyRequestsException -> SendCodeResult.TooManyAttempts
-        is FirebaseNetworkException -> SendCodeResult.Unavailable
-        else -> SendCodeResult.Unavailable
+    private fun FirebaseException.toSendCodeResult(): SendCodeResult {
+        Log.w(TAG, "Nie wysłano kodu SMS", this)
+        return when (this) {
+            is FirebaseAuthInvalidCredentialsException -> SendCodeResult.InvalidNumber
+            is FirebaseTooManyRequestsException -> SendCodeResult.TooManyAttempts
+            is FirebaseNetworkException -> SendCodeResult.Unavailable
+            else -> SendCodeResult.Unavailable
+        }
     }
 
     private companion object {
+        const val TAG = "FarmTrackerAuth"
+
         /** Jak długo telefon czeka na SMS, żeby odczytać go sam. */
         const val AUTO_RETRIEVAL_TIMEOUT_SECONDS = 60L
     }
