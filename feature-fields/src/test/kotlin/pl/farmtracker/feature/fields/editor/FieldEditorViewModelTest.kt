@@ -25,6 +25,7 @@ import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelSearch
 import pl.farmtracker.data.place.PlaceSearch
 import pl.farmtracker.feature.fields.common.DeletedFieldBin
+import pl.farmtracker.feature.fields.common.SearchState
 
 class FieldEditorViewModelTest {
 

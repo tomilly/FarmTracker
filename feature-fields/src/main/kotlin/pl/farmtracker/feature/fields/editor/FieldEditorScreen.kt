@@ -70,6 +70,7 @@ import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
 import pl.farmtracker.feature.fields.common.ColorPicker
+import pl.farmtracker.feature.fields.common.SearchStep
 import pl.farmtracker.feature.fields.common.entriesCount
 
 @Composable
@@ -113,8 +114,12 @@ fun FieldEditorScreen(
         }
         EditorStep.SEARCH -> {
             BackHandler(onBack = viewModel::closeSearch)
-            FieldSearchStep(
-                uiState = uiState,
+            SearchStep(
+                query = uiState.searchQuery,
+                search = uiState.search,
+                label = stringResource(R.string.fields_search_label),
+                hint = stringResource(R.string.fields_search_hint),
+                pickPlaceLabel = stringResource(R.string.fields_search_pick_place),
                 onBack = viewModel::closeSearch,
                 onQueryChanged = viewModel::onSearchQueryChanged,
                 onSearch = viewModel::runSearch,

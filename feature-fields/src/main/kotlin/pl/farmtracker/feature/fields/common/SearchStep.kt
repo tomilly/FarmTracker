@@ -1,4 +1,4 @@
-package pl.farmtracker.feature.fields.editor
+package pl.farmtracker.feature.fields.common
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
@@ -46,19 +46,27 @@ import pl.farmtracker.feature.fields.R
 import java.text.NumberFormat
 import java.util.Locale
 
-/** Szukanie działki po wsi i numerze („Otusz 125"); wyniki od najbliższej. */
+/**
+ * „Znajdź wieś": wieś (także bez polskich znaków) albo – przy polach – wieś z numerem działki
+ * („Otusz 125"). Wyniki od najbliższego. [label] i [hint] mówią, co tu wpisać, a [pickPlaceLabel] –
+ * co zrobić po wybraniu wsi.
+ */
 @Composable
-internal fun FieldSearchStep(
-    uiState: FieldEditorUiState,
+internal fun SearchStep(
+    query: String,
+    search: SearchState,
+    label: String,
+    hint: String,
+    pickPlaceLabel: String,
     onBack: () -> Unit,
     onQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
-    onPick: (Parcel) -> Unit,
+    onPick: (Parcel) -> Unit = {},
     onPickPlace: (Place) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
-    val search = {
+    val runSearch = {
         focusManager.clearFocus()
         onSearch()
     }
@@ -68,27 +76,27 @@ internal fun FieldSearchStep(
         onBack = onBack,
         modifier = modifier,
     ) {
-        Text(stringResource(R.string.fields_search_label), style = MaterialTheme.typography.titleMedium)
+        Text(label, style = MaterialTheme.typography.titleMedium)
         OutlinedTextField(
-            value = uiState.searchQuery,
+            value = query,
             onValueChange = onQueryChanged,
             modifier = Modifier.fillMaxWidth().heightIn(min = FarmTrackerDimens.MinTouchTarget),
             textStyle = MaterialTheme.typography.titleMedium,
-            placeholder = { Text(stringResource(R.string.fields_search_hint), style = MaterialTheme.typography.titleMedium) },
+            placeholder = { Text(hint, style = MaterialTheme.typography.titleMedium) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Search,
             ),
-            keyboardActions = KeyboardActions(onSearch = { search() }),
+            keyboardActions = KeyboardActions(onSearch = { runSearch() }),
         )
         BigActionButton(
             text = stringResource(R.string.fields_search_button),
             icon = Icons.Filled.Search,
-            onClick = search,
-            enabled = uiState.searchQuery.isNotBlank() && uiState.search != SearchState.Searching,
+            onClick = runSearch,
+            enabled = query.isNotBlank() && search != SearchState.Searching,
         )
-        when (val state = uiState.search) {
+        when (search) {
             SearchState.Idle -> Unit
             SearchState.Searching -> StatusPill(text = stringResource(R.string.fields_search_searching), icon = Icons.Filled.Search)
             SearchState.NotFound -> StatusPill(
@@ -103,11 +111,11 @@ internal fun FieldSearchStep(
             )
             is SearchState.Results -> {
                 Text(stringResource(R.string.fields_search_pick), style = MaterialTheme.typography.titleMedium)
-                state.hits.forEach { hit -> SearchHitCard(hit = hit, onClick = { onPick(hit.parcel) }) }
+                search.hits.forEach { hit -> SearchHitCard(hit = hit, onClick = { onPick(hit.parcel) }) }
             }
             is SearchState.Places -> {
-                Text(stringResource(R.string.fields_search_pick_place), style = MaterialTheme.typography.titleMedium)
-                state.hits.forEach { hit -> PlaceHitCard(hit = hit, onClick = { onPickPlace(hit.place) }) }
+                Text(pickPlaceLabel, style = MaterialTheme.typography.titleMedium)
+                search.hits.forEach { hit -> PlaceHitCard(hit = hit, onClick = { onPickPlace(hit.place) }) }
             }
         }
     }
@@ -186,7 +194,7 @@ private fun formatKilometers(km: Double): String =
 
 @PreviewLightDark
 @Composable
-private fun FieldSearchPreview() {
+private fun SearchStepPreview() {
     fun parcel(commune: String, county: String) = Parcel(
         id = "$commune-1",
         number = "1",
@@ -196,21 +204,20 @@ private fun FieldSearchPreview() {
         shape = listOf(GeoPolygon(listOf(GeoPoint(50.95, 17.35), GeoPoint(50.95, 17.36), GeoPoint(50.96, 17.36)))),
     )
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        FieldSearchStep(
-            uiState = FieldEditorUiState(
-                step = EditorStep.SEARCH,
-                searchQuery = "Bystrzyca 1",
-                search = SearchState.Results(
-                    listOf(
-                        SearchHit(parcel("Oława", "powiat oławski"), distanceKm = 3.2),
-                        SearchHit(parcel("Zakrzówek", "powiat kraśnicki"), distanceKm = 318.0),
-                    ),
+        SearchStep(
+            query = "Bystrzyca 1",
+            search = SearchState.Results(
+                listOf(
+                    SearchHit(parcel("Oława", "powiat oławski"), distanceKm = 3.2),
+                    SearchHit(parcel("Zakrzówek", "powiat kraśnicki"), distanceKm = 318.0),
                 ),
             ),
+            label = "Nazwa wsi – albo wieś i numer działki",
+            hint = "np. Sulmów albo Otusz 125",
+            pickPlaceLabel = "Wybierz wieś – potem dotknij działek na mapie:",
             onBack = {},
             onQueryChanged = {},
             onSearch = {},
-            onPick = {},
             onPickPlace = {},
         )
     }

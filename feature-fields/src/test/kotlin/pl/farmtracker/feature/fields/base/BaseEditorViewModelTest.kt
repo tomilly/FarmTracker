@@ -9,12 +9,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import pl.farmtracker.core.domain.Base
+import pl.farmtracker.core.domain.Place
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.BaseLayer
 import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakeFieldRepository
+import pl.farmtracker.core.testing.FakePlaceRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
+import pl.farmtracker.data.place.PlaceSearch
+import pl.farmtracker.feature.fields.common.SearchState
 
 class BaseEditorViewModelTest {
 
@@ -26,7 +30,8 @@ class BaseEditorViewModelTest {
 
     // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
     private val bases = FakeBaseRepository()
-    private val viewModel by lazy { BaseEditorViewModel(bases, FakeFieldRepository()) }
+    private val places = FakePlaceRepository()
+    private val viewModel by lazy { BaseEditorViewModel(bases, places, FakeFieldRepository()) }
     private val state get() = viewModel.uiState.value
 
     @Test
@@ -62,5 +67,23 @@ class BaseEditorViewModelTest {
         viewModel.save()
 
         assertNull(bases.base.first())
+    }
+
+    @Test
+    fun `a village found by name moves the map there, then a tap places the base`() {
+        val sulmow = Place("Sulmów", "gmina Goszczanów", "powiat sieradzki", GeoPoint(51.73, 18.47))
+        places.result = PlaceSearch.Found(listOf(sulmow))
+
+        viewModel.openSearch()
+        viewModel.onSearchQueryChanged("sulmow")
+        viewModel.runSearch()
+        assertEquals(listOf("sulmow"), places.queries)
+        assertEquals(sulmow, (state.search as SearchState.Places).hits.single().place)
+
+        viewModel.pickPlace(sulmow)
+
+        assertFalse(state.searchOpen)
+        assertEquals(sulmow.location, (viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowPlace).point)
+        assertNull(state.location) // wieś to nie baza – bazę stawia się palcem
     }
 }

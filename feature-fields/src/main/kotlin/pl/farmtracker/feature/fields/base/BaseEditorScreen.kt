@@ -1,5 +1,6 @@
 package pl.farmtracker.feature.fields.base
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material3.Surface
@@ -32,6 +34,7 @@ import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.fields.R
+import pl.farmtracker.feature.fields.common.SearchStep
 
 /** Gdzie jest baza (silos / pryzma) – tam kierowcy wiozą kukurydzę. */
 @Composable
@@ -48,6 +51,23 @@ fun BaseEditorScreen(
     // Zapisana baza jeszcze się wczytuje – bez tego mapa zdążyłaby pokazać „mnie" zamiast bazy.
     if (uiState.loading) return
 
+    if (uiState.searchOpen) {
+        BackHandler(onBack = viewModel::closeSearch)
+        SearchStep(
+            query = uiState.searchQuery,
+            search = uiState.search,
+            label = stringResource(R.string.fields_base_search_label),
+            hint = stringResource(R.string.fields_base_search_hint),
+            pickPlaceLabel = stringResource(R.string.fields_base_search_pick_place),
+            onBack = viewModel::closeSearch,
+            onQueryChanged = viewModel::onSearchQueryChanged,
+            onSearch = viewModel::runSearch,
+            onPickPlace = viewModel::pickPlace,
+            modifier = modifier,
+        )
+        return
+    }
+
     MapScaffold(
         title = stringResource(R.string.fields_base_title),
         icon = Icons.Filled.Warehouse,
@@ -61,18 +81,30 @@ fun BaseEditorScreen(
         ),
         modifier = modifier,
     ) {
-        BasePanel(uiState = uiState, onRemove = viewModel::removeBase, onSave = viewModel::save)
+        BasePanel(
+            uiState = uiState,
+            onSearch = viewModel::openSearch,
+            onRemove = viewModel::removeBase,
+            onSave = viewModel::save,
+        )
     }
 }
 
 @Composable
-private fun BasePanel(uiState: BaseEditorUiState, onRemove: () -> Unit, onSave: () -> Unit) {
+private fun BasePanel(uiState: BaseEditorUiState, onSearch: () -> Unit, onRemove: () -> Unit, onSave: () -> Unit) {
     if (uiState.location == null) {
         StatusPill(text = stringResource(R.string.fields_base_hint), icon = Icons.Filled.TouchApp)
     } else {
         StatusPill(text = stringResource(R.string.fields_base_set), icon = Icons.Filled.CheckCircle, tone = Tone.Go)
     }
     Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        BigActionButton(
+            text = stringResource(R.string.fields_search_by_number),
+            icon = Icons.Filled.Search,
+            onClick = onSearch,
+            tone = Tone.Neutral,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
         BigActionButton(
             text = stringResource(R.string.fields_base_remove),
             icon = Icons.Filled.Delete,
@@ -81,15 +113,14 @@ private fun BasePanel(uiState: BaseEditorUiState, onRemove: () -> Unit, onSave: 
             enabled = uiState.location != null,
             modifier = Modifier.weight(1f).fillMaxHeight(),
         )
-        BigActionButton(
-            text = stringResource(R.string.fields_base_save),
-            icon = Icons.Filled.Check,
-            onClick = onSave,
-            tone = Tone.Go,
-            enabled = uiState.canSave,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-        )
     }
+    BigActionButton(
+        text = stringResource(R.string.fields_base_save),
+        icon = Icons.Filled.Check,
+        onClick = onSave,
+        tone = Tone.Go,
+        enabled = uiState.canSave,
+    )
 }
 
 @PreviewLightDark
@@ -100,6 +131,7 @@ private fun BasePanelPreview() {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 BasePanel(
                     uiState = BaseEditorUiState(loading = false, location = GeoPoint(51.95, 18.62)),
+                    onSearch = {},
                     onRemove = {},
                     onSave = {},
                 )

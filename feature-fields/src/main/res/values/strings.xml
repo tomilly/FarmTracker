@@ -73,4 +73,7 @@
     <string name="fields_base_set">Baza zaznaczona – dotknij, by przesunąć</string>
     <string name="fields_base_remove">Usuń bazę</string>
     <string name="fields_base_save">Zapisz bazę</string>
+    <string name="fields_base_search_label">Nazwa wsi, w której jest baza</string>
+    <string name="fields_base_search_hint">np. Sulmów</string>
+    <string name="fields_base_search_pick_place">Wybierz wieś – potem dotknij miejsca bazy na mapie:</string>
 </resources>

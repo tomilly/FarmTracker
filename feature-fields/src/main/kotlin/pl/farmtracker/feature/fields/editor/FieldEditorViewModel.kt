@@ -33,6 +33,9 @@ import pl.farmtracker.data.parcel.ParcelSearch
 import pl.farmtracker.data.place.PlaceRepository
 import pl.farmtracker.data.place.PlaceSearch
 import pl.farmtracker.feature.fields.common.DeletedFieldBin
+import pl.farmtracker.feature.fields.common.SearchHit
+import pl.farmtracker.feature.fields.common.SearchState
+import pl.farmtracker.feature.fields.common.searchVillages
 import java.util.UUID
 import javax.inject.Inject
 
@@ -43,21 +46,6 @@ enum class ShapeMode { PARCELS, DRAW }
 
 /** [ALREADY_USED]: działka należy już do innego pola (nazwa w [FieldEditorUiState.problemFieldName]). */
 enum class LookupProblem { NOT_FOUND, UNAVAILABLE, ALREADY_USED }
-
-/** Wynik wyszukiwania z odległością od środka mapy (gdy znany) – najbliższe na górze. */
-data class SearchHit(val parcel: Parcel, val distanceKm: Double?)
-
-/** Znaleziona miejscowość z odległością od środka mapy (gdy znany). */
-data class PlaceHit(val place: Place, val distanceKm: Double?)
-
-sealed interface SearchState {
-    data object Idle : SearchState
-    data object Searching : SearchState
-    data class Results(val hits: List<SearchHit>) : SearchState
-    data class Places(val hits: List<PlaceHit>) : SearchState
-    data object NotFound : SearchState
-    data object Unavailable : SearchState
-}
 
 data class FieldEditorUiState(
     val step: EditorStep = EditorStep.SHAPE,
@@ -237,7 +225,11 @@ class FieldEditorViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             val center = chrome.state.value.center
             // Z cyfrą to numer działki („Otusz 125"), bez – sama wieś, do której przeniesiemy mapę.
-            val search = if (query.any { it.isDigit() }) searchParcels(query, center) else searchPlaces(query, center)
+            val search = if (query.any { it.isDigit() }) {
+                searchParcels(query, center)
+            } else {
+                placeRepository.searchVillages(query, center)
+            }
             _uiState.update { it.copy(search = search) }
         }
     }
@@ -269,17 +261,6 @@ class FieldEditorViewModel @Inject constructor(
         val place = (placeRepository.search(name, center) as? PlaceSearch.Found)?.places?.firstOrNull() ?: return null
         return if (place.name == name) null else "${place.name} $number"
     }
-
-    private suspend fun searchPlaces(query: String, center: GeoPoint?): SearchState =
-        when (val result = placeRepository.search(query, center)) {
-            is PlaceSearch.Found -> SearchState.Places(
-                result.places
-                    .map { place -> PlaceHit(place, center?.let { place.location.distanceMetersTo(it) / 1000.0 }) }
-                    .sortedBy { it.distanceKm ?: Double.MAX_VALUE },
-            )
-            PlaceSearch.NotFound -> SearchState.NotFound
-            PlaceSearch.Unavailable -> SearchState.Unavailable
-        }
 
     /** Wybrana wieś: wracamy do mapy przeniesionej w to miejsce – działki wybiera się dalej palcem. */
     fun pickPlace(place: Place) {
