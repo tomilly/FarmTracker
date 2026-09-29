@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="work_channel_name">Praca – udostępnianie lokalizacji</string>
+    <string name="work_notification_title">Pracujesz – inni widzą, gdzie jesteś</string>
+    <string name="work_notification_on_field">Na polu: %1$s</string>
+    <string name="work_notification_off_field">Poza polami</string>
+    <string name="work_notification_searching">Szukam pozycji…</string>
+    <string name="work_notification_stop">Kończę pracę</string>
+</resources>

@@ -4,14 +4,23 @@
     <string name="roles_picker_title">Kim jesteś?</string>
     <string name="roles_picker_hint">Wybierz, co dziś robisz.</string>
 
-    <!-- Sieczkarnia -->
-    <string name="roles_harvester_not_working">Nie pracujesz</string>
-    <string name="roles_harvester_working">Pracujesz na polu</string>
-    <string name="roles_harvester_moving">Przejeżdżasz na inne pole</string>
-    <string name="roles_harvester_start_work">Zaczynam pracę</string>
-    <string name="roles_harvester_stop_work">Kończę pracę</string>
-    <string name="roles_harvester_start_moving">Przejeżdżam na inne pole</string>
-    <string name="roles_harvester_arrived">Jestem na polu</string>
+    <!-- Praca (sieczkarnia, kierowca): udostępnianie lokalizacji -->
+    <string name="roles_not_working">Nie pracujesz – nikt nie widzi, gdzie jesteś</string>
+    <string name="roles_start_work">Zaczynam pracę</string>
+    <string name="roles_stop_work">Kończę pracę</string>
+    <string name="roles_location_shared">Pracujesz – inni widzą, gdzie jesteś</string>
+    <string name="roles_location_denied">Bez zgody na lokalizację inni Cię nie zobaczą</string>
+    <string name="roles_open_settings">Otwórz ustawienia</string>
+    <string name="roles_position_searching">Szukam Twojej pozycji…</string>
+    <string name="roles_position_on_field">Jesteś na polu: %1$s</string>
+    <string name="roles_position_off_field">Jesteś poza polami</string>
+
+    <!-- Inni pracujący -->
+    <string name="roles_nobody_working">%1$s nie pracuje</string>
+    <string name="roles_coworker">%1$s – %2$s</string>
+    <string name="roles_coworker_on_field">na polu %1$s</string>
+    <string name="roles_coworker_off_field">w drodze</string>
+    <string name="roles_coworker_stale">brak pozycji od kilku minut</string>
 
     <!-- Kierowca -->
     <string name="roles_driver_pick_status">Wybierz, co teraz robisz</string>
@@ -23,9 +32,9 @@
     <string name="roles_undo">Cofnij</string>
     <string name="roles_open_map">Mapa</string>
 
-    <!-- Baza -->
-    <string name="roles_base_incoming_title">Kto jedzie do bazy</string>
-    <string name="roles_base_nobody_incoming">Nikt teraz nie jedzie z ładunkiem.</string>
+    <!-- Kto gdzie jest -->
+    <string name="roles_harvesters_title">Gdzie jest sieczkarnia</string>
+    <string name="roles_drivers_title">Kierowcy</string>
 
     <!-- Admin -->
     <string name="roles_admin_fields">Pola</string>

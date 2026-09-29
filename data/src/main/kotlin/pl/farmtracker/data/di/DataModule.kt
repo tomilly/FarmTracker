@@ -23,6 +23,10 @@ import pl.farmtracker.data.place.NominatimPlaceRepository
 import pl.farmtracker.data.place.PlaceRepository
 import pl.farmtracker.data.session.DataStoreSessionRepository
 import pl.farmtracker.data.session.SessionRepository
+import pl.farmtracker.data.time.Clock
+import pl.farmtracker.data.time.SystemClock
+import pl.farmtracker.data.work.DataStoreWorkRepository
+import pl.farmtracker.data.work.WorkRepository
 import javax.inject.Singleton
 
 @Module
@@ -35,7 +39,7 @@ internal interface DataModule {
     @Binds
     fun bindParcelRepository(impl: UldkParcelRepository): ParcelRepository
 
-    // Pola i baza: na telefonie albo w zbiorze (Firestore) – wybiera aplikacja (moduł app), bo zależy to od
+    // Pola, baza i pozycje: na telefonie albo w zbiorze (Firestore) – wybiera aplikacja (moduł app), bo zależy to od
     // tego, czy jest skonfigurowany Firebase.
 
     @Binds
@@ -49,6 +53,12 @@ internal interface DataModule {
 
     @Binds
     fun bindHttpGet(impl: UrlConnectionHttpGet): HttpGet
+
+    @Binds
+    fun bindWorkRepository(impl: DataStoreWorkRepository): WorkRepository
+
+    @Binds
+    fun bindClock(impl: SystemClock): Clock
 
     companion object {
         @Provides

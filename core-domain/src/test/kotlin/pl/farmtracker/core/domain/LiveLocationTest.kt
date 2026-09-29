@@ -15,7 +15,7 @@ class LiveLocationTest {
     /** ~111 m na północ. */
     private val downTheRoad = GeoPoint(50.001, 17.0)
 
-    private val sent = LiveLocation("u1", "Marek", Role.HARVESTER, here, timeMillis = 0, fieldId = "f1")
+    private val sent = PositionReport(here, fieldId = "f1", timeMillis = 0)
 
     @Test
     fun `standing still - a position goes out once a minute`() {
@@ -35,8 +35,12 @@ class LiveLocationTest {
     }
 
     @Test
-    fun `a position becomes stale after 3 minutes without news`() {
-        assertFalse(sent.isStaleAt(3 * 60_000))
-        assertTrue(sent.isStaleAt(3 * 60_000 + 1))
+    fun `a position becomes stale after 3 minutes and disappears after 12 hours`() {
+        val location = LiveLocation("u1", "Marek", Role.HARVESTER, here, timeMillis = 0)
+
+        assertFalse(location.isStaleAt(3 * 60_000))
+        assertTrue(location.isStaleAt(3 * 60_000 + 1))
+        assertFalse(location.isGoneAt(12 * 60 * 60_000))
+        assertTrue(location.isGoneAt(12 * 60 * 60_000 + 1))
     }
 }

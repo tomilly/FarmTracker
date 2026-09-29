@@ -11,6 +11,9 @@ import pl.farmtracker.data.base.FirestoreBaseRepository
 import pl.farmtracker.data.field.DataStoreFieldRepository
 import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.field.FirestoreFieldRepository
+import pl.farmtracker.data.location.FirestoreLiveLocationRepository
+import pl.farmtracker.data.location.LiveLocationRepository
+import pl.farmtracker.data.location.LocalLiveLocationRepository
 import javax.inject.Provider
 import javax.inject.Qualifier
 
@@ -43,4 +46,11 @@ object StorageModule {
         firestore: Provider<FirestoreBaseRepository>,
         local: Provider<DataStoreBaseRepository>,
     ): BaseRepository = if (shared) firestore.get() else local.get()
+
+    @Provides
+    fun provideLiveLocationRepository(
+        @SharedHarvest shared: Boolean,
+        firestore: Provider<FirestoreLiveLocationRepository>,
+        local: Provider<LocalLiveLocationRepository>,
+    ): LiveLocationRepository = if (shared) firestore.get() else local.get()
 }

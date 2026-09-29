@@ -11,6 +11,8 @@ val firebaseConfigured = file("google-services.json").exists()
 if (firebaseConfigured) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
 }
+// `-Pfarmtracker.localOnly` – mimo pliku wersja bez wspólnego zbioru (np. próby na emulatorze bez logowania).
+val sharedHarvest = firebaseConfigured && !providers.gradleProperty("farmtracker.localOnly").isPresent
 
 android {
     namespace = "pl.farmtracker.app"
@@ -19,7 +21,7 @@ android {
         applicationId = "pl.farmtracker.app"
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("boolean", "SHARED_HARVEST", firebaseConfigured.toString())
+        buildConfigField("boolean", "SHARED_HARVEST", sharedHarvest.toString())
     }
 
     buildFeatures {
@@ -43,6 +45,7 @@ dependencies {
     implementation(projects.featureMap)
     implementation(projects.featureRoles)
     implementation(projects.featureTeam)
+    implementation(projects.featureWork)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

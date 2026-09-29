@@ -18,9 +18,24 @@ data class LiveLocation(
     val fieldId: String? = null,
     val isMe: Boolean = false,
 ) {
-    /** Dawno bez nowej pozycji (brak zasięgu, wyłączony telefon) – na mapie szara, z dopiskiem. */
+    /** Dawno bez nowej pozycji (brak zasięgu, wyłączony telefon) – pokazujemy ją z dopiskiem, na szaro. */
     fun isStaleAt(nowMillis: Long): Boolean = nowMillis - timeMillis > STALE_AFTER_MILLIS
 
+    /** Pozycja sprzed wielu godzin (telefon zgasł bez „Kończę pracę") – już jej nie pokazujemy. */
+    fun isGoneAt(nowMillis: Long): Boolean = nowMillis - timeMillis > GONE_AFTER_MILLIS
+
+    companion object {
+        const val STALE_AFTER_MILLIS = 3 * 60_000L
+        const val GONE_AFTER_MILLIS = 12 * 60 * 60_000L
+    }
+}
+
+/** Co telefon wysłał o sobie: gdzie był, na którym polu i kiedy. */
+data class PositionReport(
+    val point: GeoPoint,
+    val fieldId: String?,
+    val timeMillis: Long,
+) {
     /**
      * Czy wysłać nową pozycję – nie przy każdym odczycie GPS (bateria, transfer): od razu przy zmianie pola,
      * po przejechaniu kawałka, a na postoju co minutę – żeby inni widzieli, że telefon wciąż działa.
@@ -33,7 +48,6 @@ data class LiveLocation(
     }
 
     companion object {
-        const val STALE_AFTER_MILLIS = 3 * 60_000L
         const val HEARTBEAT_MILLIS = 60_000L
         const val MIN_INTERVAL_MILLIS = 10_000L
         const val MIN_DISTANCE_METERS = 25.0

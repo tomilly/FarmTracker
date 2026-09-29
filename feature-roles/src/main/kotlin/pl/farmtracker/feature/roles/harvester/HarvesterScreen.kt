@@ -2,12 +2,9 @@ package pl.farmtracker.feature.roles.harvester
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -16,13 +13,17 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.farmtracker.core.domain.Role
-import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.RoleScaffold
 import pl.farmtracker.core.ui.component.StatusPill
-import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
+import pl.farmtracker.feature.roles.common.Coworker
+import pl.farmtracker.feature.roles.common.CoworkerPills
+import pl.farmtracker.feature.roles.common.MyPosition
+import pl.farmtracker.feature.roles.common.MyPositionPills
 import pl.farmtracker.feature.roles.common.OpenMapButton
+import pl.farmtracker.feature.roles.common.StartWorkButton
+import pl.farmtracker.feature.roles.common.StopWorkButton
 
 @Composable
 fun HarvesterScreen(
@@ -36,8 +37,6 @@ fun HarvesterScreen(
         uiState = uiState,
         onStartWork = viewModel::startWork,
         onStopWork = viewModel::stopWork,
-        onStartMoving = viewModel::startMoving,
-        onArrived = viewModel::arrivedAtField,
         onOpenMap = onOpenMap,
         onSwitchRole = onSwitchRole,
         modifier = modifier,
@@ -49,62 +48,24 @@ internal fun HarvesterContent(
     uiState: HarvesterUiState,
     onStartWork: () -> Unit,
     onStopWork: () -> Unit,
-    onStartMoving: () -> Unit,
-    onArrived: () -> Unit,
     onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     RoleScaffold(role = Role.HARVESTER, onSwitchRole = onSwitchRole, modifier = modifier) {
-        when {
-            !uiState.isWorking -> StatusPill(
-                text = stringResource(R.string.roles_harvester_not_working),
-                icon = Icons.Filled.Info,
-            )
-            uiState.isMoving -> StatusPill(
-                text = stringResource(R.string.roles_harvester_moving),
-                icon = Icons.AutoMirrored.Filled.ArrowForward,
-                tone = Tone.Warning,
-            )
-            else -> StatusPill(
-                text = stringResource(R.string.roles_harvester_working),
-                icon = Icons.Filled.Agriculture,
-                tone = Tone.Go,
-            )
-        }
-
-        if (!uiState.isWorking) {
-            BigActionButton(
-                text = stringResource(R.string.roles_harvester_start_work),
-                icon = Icons.Filled.PlayArrow,
-                onClick = onStartWork,
-                tone = Tone.Go,
-            )
+        if (uiState.isWorking) {
+            MyPositionPills(uiState.position)
         } else {
-            if (uiState.isMoving) {
-                BigActionButton(
-                    text = stringResource(R.string.roles_harvester_arrived),
-                    icon = Icons.Filled.LocationOn,
-                    onClick = onArrived,
-                    tone = Tone.Go,
-                )
-            } else {
-                BigActionButton(
-                    text = stringResource(R.string.roles_harvester_start_moving),
-                    icon = Icons.AutoMirrored.Filled.ArrowForward,
-                    onClick = onStartMoving,
-                    tone = Tone.Warning,
-                )
-            }
-            BigActionButton(
-                text = stringResource(R.string.roles_harvester_stop_work),
-                icon = Icons.Filled.Stop,
-                onClick = onStopWork,
-                tone = Tone.Stop,
-            )
+            StatusPill(text = stringResource(R.string.roles_not_working), icon = Icons.Filled.Info)
+            StartWorkButton(onStartWork = onStartWork)
         }
 
         OpenMapButton(onClick = onOpenMap)
+
+        Text(stringResource(R.string.roles_drivers_title), style = MaterialTheme.typography.titleMedium)
+        CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
+
+        if (uiState.isWorking) StopWorkButton(onStopWork = onStopWork)
     }
 }
 
@@ -113,11 +74,13 @@ internal fun HarvesterContent(
 private fun HarvesterWorkingPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         HarvesterContent(
-            uiState = HarvesterUiState(isWorking = true),
+            uiState = HarvesterUiState(
+                isWorking = true,
+                position = MyPosition.OnField("Za lasem"),
+                drivers = listOf(Coworker("Marek", Role.DRIVER, fieldName = null, isStale = false)),
+            ),
             onStartWork = {},
             onStopWork = {},
-            onStartMoving = {},
-            onArrived = {},
             onOpenMap = {},
             onSwitchRole = {},
         )
@@ -132,8 +95,6 @@ private fun HarvesterIdlePreview() {
             uiState = HarvesterUiState(),
             onStartWork = {},
             onStopWork = {},
-            onStartMoving = {},
-            onArrived = {},
             onOpenMap = {},
             onSwitchRole = null,
         )

@@ -1,9 +1,6 @@
 package pl.farmtracker.feature.roles.base
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,10 +12,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.ui.component.RoleScaffold
-import pl.farmtracker.core.ui.component.StatusPill
-import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
+import pl.farmtracker.feature.roles.common.Coworker
+import pl.farmtracker.feature.roles.common.CoworkerPills
 import pl.farmtracker.feature.roles.common.OpenMapButton
 
 @Composable
@@ -40,14 +37,11 @@ internal fun BaseContent(
     modifier: Modifier = Modifier,
 ) {
     RoleScaffold(role = Role.BASE, onSwitchRole = onSwitchRole, modifier = modifier) {
-        Text(stringResource(R.string.roles_base_incoming_title), style = MaterialTheme.typography.titleMedium)
-        if (uiState.incomingDrivers.isEmpty()) {
-            StatusPill(text = stringResource(R.string.roles_base_nobody_incoming), icon = Icons.Filled.Info)
-        } else {
-            uiState.incomingDrivers.forEach { driver ->
-                StatusPill(text = driver, icon = Icons.Filled.LocalShipping, tone = Tone.Go)
-            }
-        }
+        Text(stringResource(R.string.roles_harvesters_title), style = MaterialTheme.typography.titleMedium)
+        CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
+
+        Text(stringResource(R.string.roles_drivers_title), style = MaterialTheme.typography.titleMedium)
+        CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
 
         OpenMapButton(onClick = onOpenMap)
     }
@@ -58,7 +52,13 @@ internal fun BaseContent(
 private fun BaseContentPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         BaseContent(
-            uiState = BaseUiState(incomingDrivers = listOf("Marek", "Janek")),
+            uiState = BaseUiState(
+                harvesters = listOf(Coworker("Rysiek", Role.HARVESTER, fieldName = "Za lasem", isStale = false)),
+                drivers = listOf(
+                    Coworker("Marek", Role.DRIVER, fieldName = null, isStale = false),
+                    Coworker("Janek", Role.DRIVER, fieldName = "Za lasem", isStale = false),
+                ),
+            ),
             onOpenMap = {},
             onSwitchRole = {},
         )

@@ -34,7 +34,13 @@ import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
+import pl.farmtracker.feature.roles.common.Coworker
+import pl.farmtracker.feature.roles.common.CoworkerPills
+import pl.farmtracker.feature.roles.common.MyPosition
+import pl.farmtracker.feature.roles.common.MyPositionPills
 import pl.farmtracker.feature.roles.common.OpenMapButton
+import pl.farmtracker.feature.roles.common.StartWorkButton
+import pl.farmtracker.feature.roles.common.StopWorkButton
 
 private data class DriverAction(val state: DriverState, @StringRes val label: Int, val icon: ImageVector)
 
@@ -58,6 +64,8 @@ fun DriverScreen(
         uiState = uiState,
         onSelectState = viewModel::selectState,
         onUndo = viewModel::undo,
+        onStartWork = viewModel::startWork,
+        onStopWork = viewModel::stopWork,
         onOpenMap = onOpenMap,
         onSwitchRole = onSwitchRole,
         modifier = modifier,
@@ -69,11 +77,23 @@ internal fun DriverContent(
     uiState: DriverUiState,
     onSelectState: (DriverState) -> Unit,
     onUndo: () -> Unit,
+    onStartWork: () -> Unit,
+    onStopWork: () -> Unit,
     onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     RoleScaffold(role = Role.DRIVER, onSwitchRole = onSwitchRole, modifier = modifier) {
+        if (uiState.isWorking) {
+            MyPositionPills(uiState.position)
+        } else {
+            StatusPill(text = stringResource(R.string.roles_not_working), icon = Icons.Filled.Info)
+            StartWorkButton(onStartWork = onStartWork)
+        }
+
+        Text(stringResource(R.string.roles_harvesters_title), style = MaterialTheme.typography.titleMedium)
+        CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
+
         val current = DriverActions.firstOrNull { it.state == uiState.state }
         if (current == null) {
             StatusPill(text = stringResource(R.string.roles_driver_pick_status), icon = Icons.Filled.Info)
@@ -105,6 +125,8 @@ internal fun DriverContent(
         }
 
         OpenMapButton(onClick = onOpenMap)
+
+        if (uiState.isWorking) StopWorkButton(onStopWork = onStopWork)
     }
 }
 
@@ -113,9 +135,17 @@ internal fun DriverContent(
 private fun DriverContentPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         DriverContent(
-            uiState = DriverUiState(state = DriverState.LOADING, previousState = DriverState.TO_FIELD),
+            uiState = DriverUiState(
+                state = DriverState.LOADING,
+                previousState = DriverState.TO_FIELD,
+                isWorking = true,
+                position = MyPosition.OffField,
+                harvesters = listOf(Coworker("Rysiek", Role.HARVESTER, fieldName = "Za lasem", isStale = false)),
+            ),
             onSelectState = {},
             onUndo = {},
+            onStartWork = {},
+            onStopWork = {},
             onOpenMap = {},
             onSwitchRole = {},
         )
