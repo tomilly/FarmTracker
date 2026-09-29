@@ -56,6 +56,12 @@ class AppViewModel @Inject constructor(
     init {
         // Rola wybrana na telefonie przed M3 nie może przykryć roli ze zbioru – poza wersją testową.
         if (sharedHarvest && !BuildConfig.DEBUG) viewModelScope.launch { sessionRepository.clearRole() }
+        // Rola z „Zmień rolę" należy do tej osoby – po wylogowaniu następna trafia na ekran swojej roli.
+        if (sharedHarvest) {
+            viewModelScope.launch {
+                authRepository.state.collect { auth -> if (auth == AuthState.SignedOut) sessionRepository.clearRole() }
+            }
+        }
     }
 
     private fun localState(): Flow<AppUiState> =

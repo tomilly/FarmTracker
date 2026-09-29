@@ -88,6 +88,17 @@ class AppViewModelTest {
             assertEquals(AppUiState.Ready(BaseDestination), awaitReady())
         }
     }
+
+    @Test
+    fun `a role picked on the phone does not outlive signing out`() = runTest {
+        val session = FakeSessionRepository(initialRole = Role.DRIVER)
+        val viewModel = shared(AuthState.SignedOut, joinedAsDriver, session)
+
+        viewModel.uiState.test {
+            assertEquals(AppUiState.Ready(LoginDestination), awaitReady())
+            assertEquals(null, session.currentRole.value)
+        }
+    }
 }
 
 /** Pomija początkowy stan ładowania – zależy od kolejności startu `stateIn`. */
