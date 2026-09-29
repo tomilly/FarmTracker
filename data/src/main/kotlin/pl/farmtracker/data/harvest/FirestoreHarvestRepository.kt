@@ -30,6 +30,7 @@ import pl.farmtracker.data.base.DataStoreBaseRepository
 import pl.farmtracker.data.field.DataStoreFieldRepository
 import pl.farmtracker.data.field.fieldsOf
 import pl.farmtracker.data.field.toFirestoreData
+import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -82,7 +83,9 @@ class FirestoreHarvestRepository @Inject constructor(
         } else {
             Membership.Joined(Harvest(harvestId, harvest.getString(NAME).orEmpty()), member)
         }
-    }.catch { error -> if (error is FirebaseFirestoreException) emit(Membership.None) else throw error }
+    }
+        .retryWhenNotYetMember()
+        .catch { error -> if (error is FirebaseFirestoreException) emit(Membership.None) else throw error }
 
     override val members: Flow<List<Member>> = membership.flatMapLatest { membership ->
         if (membership !is Membership.Joined) {
@@ -90,6 +93,7 @@ class FirestoreHarvestRepository @Inject constructor(
         } else {
             harvestRef(membership.harvest.id).collection(MEMBERS).snapshots()
                 .map { snapshot -> snapshot.documents.mapNotNull { it.toMember() } }
+                .retryWhenNotYetMember()
                 .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }
         }
     }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import pl.farmtracker.core.domain.Field
+import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
 import pl.farmtracker.data.harvest.HarvestRepository
 import pl.farmtracker.data.harvest.Membership
@@ -44,6 +45,7 @@ class FirestoreFieldRepository @Inject constructor(
                 .map { snapshot ->
                     snapshot.documents.mapNotNull { it.toField() }.sortedWith(compareBy({ it.order }, { it.name }))
                 }
+                .retryWhenNotYetMember()
                 .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }
         }
     }

@@ -16,6 +16,7 @@ import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.LAT
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.LON
@@ -46,6 +47,7 @@ class FirestoreLiveLocationRepository @Inject constructor(
         } else {
             db.collection(HARVESTS).document(membership.harvest.id).collection(LOCATIONS).snapshots()
                 .map { snapshot -> snapshot.documents.mapNotNull { it.toLiveLocation(myId = membership.me.userId) } }
+                .retryWhenNotYetMember()
                 .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }
         }
     }

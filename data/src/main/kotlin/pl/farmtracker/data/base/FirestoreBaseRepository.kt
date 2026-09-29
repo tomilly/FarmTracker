@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import pl.farmtracker.core.domain.Base
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.data.firebase.retryWhenNotYetMember
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.BASE
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.LAT
@@ -42,6 +43,7 @@ class FirestoreBaseRepository @Inject constructor(
                     val lon = (point?.get(LON) as? Number)?.toDouble()
                     if (lat != null && lon != null) Base(GeoPoint(latitude = lat, longitude = lon)) else null
                 }
+                .retryWhenNotYetMember()
                 .catch { error -> if (error is FirebaseFirestoreException) emit(null) else throw error }
         }
     }
