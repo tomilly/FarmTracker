@@ -12,14 +12,17 @@ import org.junit.Test
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.Place
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
+import pl.farmtracker.core.testing.FakePlaceRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelSearch
+import pl.farmtracker.data.place.PlaceSearch
 import pl.farmtracker.feature.fields.common.DeletedFieldBin
 
 class FieldEditorViewModelTest {
@@ -29,6 +32,7 @@ class FieldEditorViewModelTest {
 
     private val parcels = FakeParcelRepository()
     private val fields = FakeFieldRepository()
+    private val places = FakePlaceRepository()
 
     // Leniwie: ViewModel musi powstać po podmianie Dispatchers.Main przez regułę.
     private val bin = DeletedFieldBin()
@@ -36,6 +40,7 @@ class FieldEditorViewModelTest {
 
     private fun editor(fieldId: String? = null) = FieldEditorViewModel(
         parcels,
+        places,
         fields,
         bin,
         SavedStateHandle(if (fieldId == null) emptyMap() else mapOf(FieldEditorViewModel.FIELD_ID_ARG to fieldId)),
@@ -395,5 +400,45 @@ class FieldEditorViewModelTest {
         assertTrue(state.parcels.isEmpty())
         assertEquals(LookupProblem.ALREADY_USED, state.lastProblem)
         assertTrue(viewModel.chrome.state.value.cameraRequest is CameraRequest.ShowArea)
+    }
+
+    private val sulmowNear = Place("Sulmów", "gmina Goszczanów", "powiat sieradzki", GeoPoint(50.01, 17.01))
+    private val sulmowFar = Place("Sulmów", "gmina Kroczyce", "powiat zawierciański", GeoPoint(52.0, 19.0))
+
+    @Test
+    fun `a name without a number searches villages, nearest first, and asks no parcel service`() {
+        places.result = PlaceSearch.Found(listOf(sulmowFar, sulmowNear))
+        viewModel.chrome.onCameraIdle(15.0, GeoPoint(50.0, 17.0))
+        viewModel.onSearchQueryChanged("sulmow")
+
+        viewModel.runSearch()
+
+        assertEquals(listOf("sulmow"), places.queries)
+        assertTrue(parcels.searches.isEmpty())
+        val hits = (state.search as SearchState.Places).hits
+        assertEquals(listOf(sulmowNear, sulmowFar), hits.map { it.place })
+    }
+
+    @Test
+    fun `picking a village moves the map there close enough to tap parcels`() {
+        viewModel.openSearch()
+
+        viewModel.pickPlace(sulmowNear)
+
+        assertEquals(EditorStep.SHAPE, state.step)
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowPlace
+        assertEquals(sulmowNear.location, request.point)
+    }
+
+    @Test
+    fun `parcel number with a village written without polish letters is corrected and retried`() {
+        parcels.searchResult = ParcelSearch.NotFound
+        places.result = PlaceSearch.Found(listOf(sulmowNear))
+        viewModel.onSearchQueryChanged("sulmow 12")
+
+        viewModel.runSearch()
+
+        assertEquals(listOf("sulmow 12", "Sulmów 12"), parcels.searches)
+        assertEquals(listOf("sulmow"), places.queries)
     }
 }

@@ -120,6 +120,15 @@ class MapChromeControllerTest {
     }
 
     @Test
+    fun `showing a place zooms close enough to see parcels`() {
+        chrome.showPlace(GeoPoint(51.79, 18.45))
+
+        val request = state.cameraRequest as CameraRequest.ShowPlace
+        assertEquals(GeoPoint(51.79, 18.45), request.point)
+        assertTrue(request.zoom >= MapSources.PARCELS_MIN_ZOOM)
+    }
+
+    @Test
     fun `camera idle remembers zoom and center`() {
         chrome.onCameraIdle(14.0, GeoPoint(50.98, 17.42))
         chrome.onCameraIdle(15.0)

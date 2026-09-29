@@ -117,6 +117,7 @@ fun FieldEditorScreen(
                 onQueryChanged = viewModel::onSearchQueryChanged,
                 onSearch = viewModel::runSearch,
                 onPick = viewModel::pickSearchResult,
+                onPickPlace = viewModel::pickPlace,
                 modifier = modifier,
             )
         }
@@ -224,7 +225,7 @@ private fun ParcelsPanel(
         // Obok „Dalej" nadal można dołożyć działkę po numerze.
         ButtonPair {
             BigActionButton(
-                text = stringResource(R.string.fields_search_short),
+                text = stringResource(R.string.fields_search_by_number),
                 icon = Icons.Filled.Search,
                 onClick = onSearch,
                 tone = Tone.Neutral,

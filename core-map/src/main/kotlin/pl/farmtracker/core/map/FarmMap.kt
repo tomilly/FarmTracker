@@ -213,11 +213,18 @@ internal fun FarmMap(
                     null,
                 )
             }
+            is CameraRequest.ShowPlace -> {
+                mapLibreMap.stopFollowingMe()
+                mapLibreMap.easeCamera(
+                    CameraUpdateFactory.newLatLngZoom(
+                        LatLng(cameraRequest.point.latitude, cameraRequest.point.longitude),
+                        cameraRequest.zoom,
+                    ),
+                    SHOW_AREA_DURATION_MS,
+                )
+            }
             is CameraRequest.ShowArea -> {
-                // Bez tego śledzenie pozycji od razu przeciągnęłoby mapę z powrotem do użytkownika.
-                if (mapLibreMap.locationComponent.isLocationComponentActivated) {
-                    mapLibreMap.locationComponent.cameraMode = CameraMode.NONE
-                }
+                mapLibreMap.stopFollowingMe()
                 val bounds = cameraRequest.bounds
                 mapLibreMap.easeCamera(
                     CameraUpdateFactory.newLatLngBounds(
@@ -442,6 +449,13 @@ private fun Style.applyVisibility(baseLayer: BaseLayer, showParcels: Boolean) {
         rasterSaturation(if (photo) -1f else 0f),
         rasterBrightnessMin(if (photo) 1f else 0f),
     )
+}
+
+/** Bez tego śledzenie pozycji od razu przeciągnęłoby mapę z powrotem do użytkownika. */
+private fun MapLibreMap.stopFollowingMe() {
+    if (locationComponent.isLocationComponentActivated) {
+        locationComponent.cameraMode = CameraMode.NONE
+    }
 }
 
 /** Włącza kropkę „tu jestem". Zwraca `false`, gdy brak zgody na lokalizację. */

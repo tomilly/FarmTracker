@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.Place
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.ui.component.BigActionButton
@@ -53,6 +54,7 @@ internal fun FieldSearchStep(
     onQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
     onPick: (Parcel) -> Unit,
+    onPickPlace: (Place) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -88,7 +90,7 @@ internal fun FieldSearchStep(
         )
         when (val state = uiState.search) {
             SearchState.Idle -> Unit
-            SearchState.Searching -> StatusPill(text = stringResource(R.string.fields_searching), icon = Icons.Filled.Search)
+            SearchState.Searching -> StatusPill(text = stringResource(R.string.fields_search_searching), icon = Icons.Filled.Search)
             SearchState.NotFound -> StatusPill(
                 text = stringResource(R.string.fields_search_not_found),
                 icon = Icons.Filled.Info,
@@ -103,6 +105,41 @@ internal fun FieldSearchStep(
                 Text(stringResource(R.string.fields_search_pick), style = MaterialTheme.typography.titleMedium)
                 state.hits.forEach { hit -> SearchHitCard(hit = hit, onClick = { onPick(hit.parcel) }) }
             }
+            is SearchState.Places -> {
+                Text(stringResource(R.string.fields_search_pick_place), style = MaterialTheme.typography.titleMedium)
+                state.hits.forEach { hit -> PlaceHitCard(hit = hit, onClick = { onPickPlace(hit.place) }) }
+            }
+        }
+    }
+}
+
+/** Wieś w wynikach: nazwa, gmina i powiat (ta sama nazwa bywa w wielu gminach) oraz odległość. */
+@Composable
+private fun PlaceHitCard(hit: PlaceHit, onClick: () -> Unit) {
+    val place = hit.place
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = FarmTrackerDimens.MinTouchTarget),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(text = place.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = listOf(place.commune, place.county).filter { it.isNotBlank() }.distinct().joinToString(", "),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                hit.distanceKm?.let {
+                    Text(
+                        text = stringResource(R.string.fields_search_distance, formatKilometers(it)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(32.dp))
         }
     }
 }
@@ -174,6 +211,7 @@ private fun FieldSearchPreview() {
             onQueryChanged = {},
             onSearch = {},
             onPick = {},
+            onPickPlace = {},
         )
     }
 }

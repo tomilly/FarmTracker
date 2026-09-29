@@ -17,6 +17,8 @@ import pl.farmtracker.data.network.HttpGet
 import pl.farmtracker.data.network.UrlConnectionHttpGet
 import pl.farmtracker.data.parcel.ParcelRepository
 import pl.farmtracker.data.parcel.UldkParcelRepository
+import pl.farmtracker.data.place.NominatimPlaceRepository
+import pl.farmtracker.data.place.PlaceRepository
 import pl.farmtracker.data.session.DataStoreSessionRepository
 import pl.farmtracker.data.session.SessionRepository
 import javax.inject.Singleton
@@ -33,6 +35,9 @@ internal interface DataModule {
 
     @Binds
     fun bindFieldRepository(impl: DataStoreFieldRepository): FieldRepository
+
+    @Binds
+    fun bindPlaceRepository(impl: NominatimPlaceRepository): PlaceRepository
 
     @Binds
     fun bindHttpGet(impl: UrlConnectionHttpGet): HttpGet

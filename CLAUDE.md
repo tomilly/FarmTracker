@@ -44,7 +44,8 @@ zaznaczanie działki dotknięciem (ULDK GetParcelByXY → nakładka + numer, obr
 Adresy usług: `feature-map/.../MapSources.kt`, ULDK: `data/.../parcel/UldkParcelRepository.kt`.
 Geometria (WKT, powierzchnia) w `core-domain/.../geo`.
 M2 gotowe (`feature-fields`, zapis lokalny w DataStore JSON – `data/.../field`): lista pól (admin → „Pola"),
-nowe pole z działek (dotyk / numer „Otusz 125") albo narysowane po rogach → nazwa, kolor, wjazd → zapis;
+nowe pole z działek (dotyk / wieś „sulmow" przez Nominatim OSM / numer „Otusz 125" przez ULDK) albo narysowane
+po rogach → nazwa, kolor, wjazd → zapis; działka może należeć tylko do jednego pola;
 edycja i usuwanie z „Cofnij" (`DeletedFieldBin`); pola i wjazdy widoczne na mapie każdej roli.
 Następny: M3 – Firebase Auth (SMS), zbiór, zaproszenia, role.
 Kamienie milowe: docs/BRIEF.md §9.

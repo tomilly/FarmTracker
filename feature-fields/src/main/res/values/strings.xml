@@ -19,8 +19,7 @@
     <string name="fields_parcels_many">%1$d działek</string>
     <string name="fields_undo">Cofnij</string>
     <string name="fields_next">Dalej</string>
-    <string name="fields_search_by_number">Numer działki</string>
-    <string name="fields_search_short">Szukaj</string>
+    <string name="fields_search_by_number">Znajdź wieś</string>
     <string name="fields_draw">Narysuj ręcznie</string>
     <string name="fields_draw_hint">Dotykaj po kolei rogów pola (co najmniej 3)</string>
     <string name="fields_draw_more">Potrzeba co najmniej 3</string>
@@ -29,13 +28,15 @@
     <string name="fields_corners_few">%1$d rogi</string>
     <string name="fields_corners_many">%1$d rogów</string>
 
-    <!-- Szukanie działki po numerze -->
-    <string name="fields_search_title">Szukaj działki</string>
-    <string name="fields_search_label">Wieś (obręb) i numer działki</string>
-    <string name="fields_search_hint">np. Otusz 125</string>
+    <!-- Szukanie wsi albo działki po numerze -->
+    <string name="fields_search_title">Znajdź wieś</string>
+    <string name="fields_search_label">Nazwa wsi – albo wieś i numer działki</string>
+    <string name="fields_search_hint">np. Sulmów albo Otusz 125</string>
     <string name="fields_search_button">Szukaj</string>
-    <string name="fields_search_not_found">Nie znaleziono. Sprawdź nazwę wsi i numer działki.</string>
+    <string name="fields_search_searching">Szukam…</string>
+    <string name="fields_search_not_found">Nie znaleziono. Sprawdź nazwę wsi.</string>
     <string name="fields_search_pick">Wybierz działkę:</string>
+    <string name="fields_search_pick_place">Wybierz wieś – potem dotknij działek na mapie:</string>
     <string name="fields_search_result_title">Działka %1$s · %2$s</string>
     <string name="fields_search_result_place">gm. %1$s, %2$s</string>
     <string name="fields_search_distance">ok. %1$s km stąd</string>

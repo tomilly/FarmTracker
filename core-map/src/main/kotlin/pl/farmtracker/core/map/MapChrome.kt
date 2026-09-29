@@ -25,6 +25,9 @@ sealed interface CameraRequest {
 
     /** Pokaż cały obszar, np. znalezioną działkę. */
     data class ShowArea(override val id: Int, val bounds: GeoBounds) : CameraRequest
+
+    /** Pokaż miejsce z bliska, np. znalezioną wieś – z widocznymi granicami działek. */
+    data class ShowPlace(override val id: Int, val point: GeoPoint, val zoom: Double) : CameraRequest
 }
 
 /** Stan wspólny dla każdego ekranu z mapą: warstwy, kamera i lokalizacja użytkownika. */
@@ -106,6 +109,11 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
         _state.update { it.copy(cameraRequest = CameraRequest.ShowArea(it.nextCameraId(), bounds)) }
     }
 
+    /** Przenieś mapę do miejsca (np. wsi) na zoomie, przy którym widać granice działek. */
+    fun showPlace(point: GeoPoint) = _state.update {
+        it.copy(cameraRequest = CameraRequest.ShowPlace(it.nextCameraId(), point, PLACE_ZOOM))
+    }
+
     fun selectBaseLayer(layer: BaseLayer) = _state.update { it.copy(baseLayer = layer) }
 
     fun toggleParcels() = _state.update { it.copy(showParcels = !it.showParcels) }
@@ -116,4 +124,9 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
     private fun MapChromeState.nextCameraId() = (cameraRequest?.id ?: 0) + 1
 
     private fun MapChromeState.nextCenterOnMe() = CameraRequest.CenterOnMe(nextCameraId())
+
+    private companion object {
+        /** Ok. 1–2 km szerokości ekranu: cała wieś z polami, a granice działek już widoczne. */
+        const val PLACE_ZOOM = 14.5
+    }
 }

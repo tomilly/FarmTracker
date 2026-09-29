@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.Parcel
+import pl.farmtracker.core.domain.Place
 import pl.farmtracker.core.domain.geo.GeoArea
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
@@ -29,6 +30,8 @@ import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelRepository
 import pl.farmtracker.data.parcel.ParcelSearch
+import pl.farmtracker.data.place.PlaceRepository
+import pl.farmtracker.data.place.PlaceSearch
 import pl.farmtracker.feature.fields.common.DeletedFieldBin
 import java.util.UUID
 import javax.inject.Inject
@@ -44,10 +47,14 @@ enum class LookupProblem { NOT_FOUND, UNAVAILABLE, ALREADY_USED }
 /** Wynik wyszukiwania z odległością od środka mapy (gdy znany) – najbliższe na górze. */
 data class SearchHit(val parcel: Parcel, val distanceKm: Double?)
 
+/** Znaleziona miejscowość z odległością od środka mapy (gdy znany). */
+data class PlaceHit(val place: Place, val distanceKm: Double?)
+
 sealed interface SearchState {
     data object Idle : SearchState
     data object Searching : SearchState
     data class Results(val hits: List<SearchHit>) : SearchState
+    data class Places(val hits: List<PlaceHit>) : SearchState
     data object NotFound : SearchState
     data object Unavailable : SearchState
 }
@@ -104,6 +111,7 @@ data class FieldEditorUiState(
 @HiltViewModel
 class FieldEditorViewModel @Inject constructor(
     private val parcelRepository: ParcelRepository,
+    private val placeRepository: PlaceRepository,
     private val fieldRepository: FieldRepository,
     private val deletedFieldBin: DeletedFieldBin,
     savedStateHandle: SavedStateHandle,
@@ -225,17 +233,55 @@ class FieldEditorViewModel @Inject constructor(
         _uiState.update { it.copy(search = SearchState.Searching) }
         searchJob = viewModelScope.launch {
             val center = chrome.state.value.center
-            val search = when (val result = parcelRepository.search(query)) {
-                is ParcelSearch.Found -> SearchState.Results(
-                    result.parcels
-                        .map { parcel -> SearchHit(parcel, center?.let { parcel.distanceKmFrom(it) }) }
-                        .sortedBy { it.distanceKm ?: Double.MAX_VALUE },
-                )
-                ParcelSearch.NotFound -> SearchState.NotFound
-                ParcelSearch.Unavailable -> SearchState.Unavailable
-            }
+            // Z cyfrą to numer działki („Otusz 125"), bez – sama wieś, do której przeniesiemy mapę.
+            val search = if (query.any { it.isDigit() }) searchParcels(query, center) else searchPlaces(query, center)
             _uiState.update { it.copy(search = search) }
         }
+    }
+
+    private suspend fun searchParcels(query: String, center: GeoPoint?): SearchState {
+        var result = parcelRepository.search(query)
+        if (result == ParcelSearch.NotFound) {
+            correctedParcelQuery(query, center)?.let { result = parcelRepository.search(it) }
+        }
+        return when (val found = result) {
+            is ParcelSearch.Found -> SearchState.Results(
+                found.parcels
+                    .map { parcel -> SearchHit(parcel, center?.let { parcel.distanceKmFrom(it) }) }
+                    .sortedBy { it.distanceKm ?: Double.MAX_VALUE },
+            )
+            ParcelSearch.NotFound -> SearchState.NotFound
+            ParcelSearch.Unavailable -> SearchState.Unavailable
+        }
+    }
+
+    /**
+     * ULDK wymaga dokładnej nazwy obrębu z polskimi znakami, a ludzie piszą „sulmow 12". Poprawną
+     * pisownię bierzemy z wyszukiwarki miejscowości: „sulmow 12" → „Sulmów 12". `null` = nie ma czego poprawić.
+     */
+    private suspend fun correctedParcelQuery(query: String, center: GeoPoint?): String? {
+        val name = query.substringBeforeLast(' ').trim()
+        val number = query.substringAfterLast(' ').trim()
+        if (name.isEmpty() || number.isEmpty()) return null
+        val place = (placeRepository.search(name, center) as? PlaceSearch.Found)?.places?.firstOrNull() ?: return null
+        return if (place.name == name) null else "${place.name} $number"
+    }
+
+    private suspend fun searchPlaces(query: String, center: GeoPoint?): SearchState =
+        when (val result = placeRepository.search(query, center)) {
+            is PlaceSearch.Found -> SearchState.Places(
+                result.places
+                    .map { place -> PlaceHit(place, center?.let { place.location.distanceMetersTo(it) / 1000.0 }) }
+                    .sortedBy { it.distanceKm ?: Double.MAX_VALUE },
+            )
+            PlaceSearch.NotFound -> SearchState.NotFound
+            PlaceSearch.Unavailable -> SearchState.Unavailable
+        }
+
+    /** Wybrana wieś: wracamy do mapy przeniesionej w to miejsce – działki wybiera się dalej palcem. */
+    fun pickPlace(place: Place) {
+        _uiState.update { it.copy(step = EditorStep.SHAPE, lastProblem = null) }
+        chrome.showPlace(place.location)
     }
 
     /**
