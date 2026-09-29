@@ -11,10 +11,12 @@ import pl.farmtracker.core.domain.geo.GeoPolygon
  * @param highlight zaznaczone kształty (żółta nakładka z obrysem), np. dotknięta działka
  * @param draft rysowany właśnie kształt – rogi w kolejności dotykania
  * @param entryPoints wjazdy na pola (zielone kropki z podpisem „Wjazd")
+ * @param base baza zbioru – silos / pryzma (czarna kropka z podpisem „Baza")
  */
 data class MapOverlays(
     val fields: List<Field> = emptyList(),
     val highlight: List<GeoPolygon> = emptyList(),
     val draft: List<GeoPoint> = emptyList(),
     val entryPoints: List<GeoPoint> = emptyList(),
+    val base: GeoPoint? = null,
 )

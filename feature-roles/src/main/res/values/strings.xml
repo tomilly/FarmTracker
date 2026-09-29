@@ -29,6 +29,7 @@
 
     <!-- Admin -->
     <string name="roles_admin_fields">Pola</string>
+    <string name="roles_admin_base">Baza</string>
     <string name="roles_admin_people">Ludzie</string>
     <string name="roles_admin_settings">Ustawienia</string>
     <string name="roles_admin_coming_soon">Ta funkcja będzie wkrótce.</string>

@@ -30,6 +30,10 @@ data object MapDestination
 @Serializable
 data object FieldsListDestination
 
+/** Ustawianie bazy zbioru – silosu / pryzmy (admin → „Baza"). Nie mylić z ekranem roli [BaseDestination]. */
+@Serializable
+data object BaseSetupDestination
+
 /** Jedno pole na mapie (dotknięte na liście); stąd „Edytuj pole". Nazwa właściwości = `FieldViewModel.FIELD_ID_ARG`. */
 @Serializable
 data class FieldDestination(val fieldId: String)

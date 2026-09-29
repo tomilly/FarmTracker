@@ -52,6 +52,9 @@ internal object MapSources {
     const val ENTRIES_SOURCE_ID = "entries"
     const val ENTRIES_CIRCLE_LAYER_ID = "entries-circle"
     const val ENTRIES_LABEL_LAYER_ID = "entries-label"
+    const val BASE_SOURCE_ID = "base"
+    const val BASE_CIRCLE_LAYER_ID = "base-circle"
+    const val BASE_LABEL_LAYER_ID = "base-label"
 
     const val SELECTION_SOURCE_ID = "selected-parcel"
     const val SELECTION_FILL_LAYER_ID = "selected-parcel-fill"

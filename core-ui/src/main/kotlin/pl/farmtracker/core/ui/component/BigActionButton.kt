@@ -57,6 +57,8 @@ fun BigActionButton(
         .heightIn(min = FarmTrackerDimens.BigButtonMinHeight)
         .then(if (selected != null) Modifier.semantics { this.selected = selected } else Modifier)
 
+    val disabledContent = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
+
     val content: @Composable RowScope.() -> Unit = {
         Icon(icon, contentDescription = null, modifier = Modifier.size(FarmTrackerDimens.BigButtonIconSize))
         Spacer(Modifier.width(FarmTrackerDimens.IconTextGap))
@@ -81,6 +83,8 @@ fun BigActionButton(
             colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface,
+                disabledContainerColor = MaterialTheme.colorScheme.surface,
+                disabledContentColor = disabledContent,
             ),
             contentPadding = ButtonContentPadding,
             content = content,
@@ -92,7 +96,13 @@ fun BigActionButton(
             modifier = buttonModifier,
             enabled = enabled,
             shape = MaterialTheme.shapes.medium,
-            colors = ButtonDefaults.buttonColors(containerColor = colors.container, contentColor = colors.content),
+            // Wyłączony też z pełnym tłem – domyślnie jest prawie przezroczysty i na mapie znika.
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.container,
+                contentColor = colors.content,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = disabledContent,
+            ),
             contentPadding = ButtonContentPadding,
             content = content,
         )
@@ -128,3 +138,6 @@ private fun BigActionButtonPreview() {
         }
     }
 }
+
+/** Jak w Material 3 – wyłączony napis wyraźnie bledszy, ale nadal czytelny. */
+private const val DISABLED_CONTENT_ALPHA = 0.38f

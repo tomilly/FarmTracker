@@ -11,6 +11,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import pl.farmtracker.data.base.BaseRepository
+import pl.farmtracker.data.base.DataStoreBaseRepository
 import pl.farmtracker.data.field.DataStoreFieldRepository
 import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.network.HttpGet
@@ -35,6 +37,9 @@ internal interface DataModule {
 
     @Binds
     fun bindFieldRepository(impl: DataStoreFieldRepository): FieldRepository
+
+    @Binds
+    fun bindBaseRepository(impl: DataStoreBaseRepository): BaseRepository
 
     @Binds
     fun bindPlaceRepository(impl: NominatimPlaceRepository): PlaceRepository

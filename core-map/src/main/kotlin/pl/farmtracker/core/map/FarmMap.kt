@@ -51,6 +51,7 @@ import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.layers.PropertyFactory.rasterBrightnessMin
 import org.maplibre.android.style.layers.PropertyFactory.rasterSaturation
+import org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap
 import org.maplibre.android.style.layers.PropertyFactory.textAnchor
 import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textField
@@ -109,6 +110,11 @@ private const val ENTRY_STROKE = 3f
 private const val ENTRY_LABEL_SIZE = 15f
 private const val ENTRY_LABEL_OFFSET = 1.1f
 
+// Baza większa i czarna – odróżnia się od zielonych wjazdów, kolorów pól i niebieskiej kropki „ja".
+private const val BASE_COLOR = "#212121"
+private const val BASE_RADIUS = 15f
+private const val BASE_LABEL_SIZE = 17f
+
 /** Pasy mapy (w pikselach) zasłonięte przez przyciski u góry i na dole. */
 internal data class MapCovered(val top: Int = 0, val bottom: Int = 0) {
     /** Kamera celująca w środek odkrytej części mapy. */
@@ -139,6 +145,7 @@ internal fun FarmMap(
     val context = LocalContext.current
     val areaPaddingPx = with(LocalDensity.current) { SHOW_AREA_PADDING.roundToPx() }
     val entryLabel = stringResource(R.string.core_map_entry_label)
+    val baseLabel = stringResource(R.string.core_map_base_label)
     val mapView = remember {
         MapLibre.getInstance(context)
         MapView(context).apply { onCreate(null) }
@@ -173,7 +180,7 @@ internal fun FarmMap(
             }
             mapLibreMap.setStyle(Style.Builder().fromUri(MapSources.BASE_STYLE_URL)) { loaded ->
                 loaded.usePolishLabels()
-                loaded.addFarmLayers(entryLabel)
+                loaded.addFarmLayers(entryLabel, baseLabel)
                 style = loaded
             }
             map = mapLibreMap
@@ -203,6 +210,11 @@ internal fun FarmMap(
     LaunchedEffect(style, overlays.entryPoints) {
         style?.getSourceAs<GeoJsonSource>(MapSources.ENTRIES_SOURCE_ID)
             ?.setGeoJson(overlays.entryPoints.toPointsFeatureCollection())
+    }
+
+    LaunchedEffect(style, overlays.base) {
+        style?.getSourceAs<GeoJsonSource>(MapSources.BASE_SOURCE_ID)
+            ?.setGeoJson(listOfNotNull(overlays.base).toPointsFeatureCollection())
     }
 
     LaunchedEffect(style, overlays.highlight) {
@@ -294,7 +306,7 @@ private fun MapViewLifecycle(mapView: MapView) {
 }
 
 /** Ortofotomapa pod etykietami mapy bazowej (zdjęcie + nazwy miejscowości), działki nad zdjęciem. */
-private fun Style.addFarmLayers(entryLabel: String) {
+private fun Style.addFarmLayers(entryLabel: String, baseLabel: String) {
     addSource(
         RasterSource(
             MapSources.ORTHO_SOURCE_ID,
@@ -399,9 +411,33 @@ private fun Style.addFarmLayers(entryLabel: String) {
         )
     addLayerAbove(entryCircles, MapSources.DRAFT_POINTS_LAYER_ID)
 
-    // Napisy (nazwy pól, „Wjazd") na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
+    addSource(GeoJsonSource(MapSources.BASE_SOURCE_ID))
+    val baseCircle = CircleLayer(MapSources.BASE_CIRCLE_LAYER_ID, MapSources.BASE_SOURCE_ID)
+        .withProperties(
+            circleRadius(BASE_RADIUS),
+            circleColor(BASE_COLOR),
+            circleStrokeColor(Color.WHITE),
+            circleStrokeWidth(ENTRY_STROKE),
+        )
+    val baseLabels = SymbolLayer(MapSources.BASE_LABEL_LAYER_ID, MapSources.BASE_SOURCE_ID)
+        .withProperties(
+            textField(baseLabel),
+            textFont(arrayOf(FIELD_LABEL_FONT)),
+            textSize(BASE_LABEL_SIZE),
+            textColor(Color.WHITE),
+            textHaloColor(Color.BLACK),
+            textHaloWidth(FIELD_LABEL_HALO),
+            textOffset(arrayOf(0f, ENTRY_LABEL_OFFSET)),
+            textAnchor(Property.TEXT_ANCHOR_TOP),
+            // Napis bazy zawsze widoczny – nawet gdy nachodzi na nazwę pola.
+            textAllowOverlap(true),
+        )
+    addLayerAbove(baseCircle, MapSources.ENTRIES_CIRCLE_LAYER_ID)
+
+    // Napisy (nazwy pól, „Wjazd", „Baza") na samej górze – nad zaznaczeniem i etykietami mapy bazowej.
     addLayer(fieldsLabel)
     addLayer(entryLabels)
+    addLayer(baseLabels)
 }
 
 private fun List<GeoPoint>.toDraftFeatureCollection(): FeatureCollection {

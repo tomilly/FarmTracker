@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -20,12 +21,13 @@ import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 
 /**
- * Menu admina – płaskie, 3 pozycje (BRIEF §4). Na razie bez ViewModelu. „Pola" otwiera mapę (M1);
- * zarządzanie polami (M2) oraz ekrany Ludzie / Ustawienia (M3) powstaną jako osobne moduły feature.
+ * Menu admina – płaskie (BRIEF §4). Na razie bez ViewModelu. „Pola" i „Baza" – miejsca zbioru;
+ * ekrany Ludzie / Ustawienia (M3) powstaną jako osobne moduły feature.
  */
 @Composable
 fun AdminScreen(
     onOpenFields: () -> Unit,
+    onOpenBase: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -46,6 +48,11 @@ fun AdminScreen(
             onClick = onOpenFields,
         )
         BigActionButton(
+            text = stringResource(R.string.roles_admin_base),
+            icon = Icons.Filled.Warehouse,
+            onClick = onOpenBase,
+        )
+        BigActionButton(
             text = stringResource(R.string.roles_admin_people),
             icon = Icons.Filled.Groups,
             onClick = showComingSoon,
@@ -62,6 +69,6 @@ fun AdminScreen(
 @Composable
 private fun AdminScreenPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        AdminScreen(onOpenFields = {}, onSwitchRole = {})
+        AdminScreen(onOpenFields = {}, onOpenBase = {}, onSwitchRole = {})
     }
 }

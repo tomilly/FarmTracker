@@ -66,4 +66,11 @@
     <string name="fields_entries_one">%1$d wjazd</string>
     <string name="fields_entries_few">%1$d wjazdy</string>
     <string name="fields_entries_many">%1$d wjazdów</string>
+
+    <!-- Baza -->
+    <string name="fields_base_title">Baza</string>
+    <string name="fields_base_hint">Dotknij miejsca, gdzie jest baza (silos, pryzma)</string>
+    <string name="fields_base_set">Baza zaznaczona – dotknij, by przesunąć</string>
+    <string name="fields_base_remove">Usuń bazę</string>
+    <string name="fields_base_save">Zapisz bazę</string>
 </resources>

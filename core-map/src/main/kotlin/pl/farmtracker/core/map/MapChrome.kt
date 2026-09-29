@@ -132,9 +132,12 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
         _state.update { it.copy(cameraRequest = CameraRequest.ShowArea(it.nextCameraId(), bounds, zoomIn)) }
     }
 
-    /** Przenieś mapę do miejsca (np. wsi) na zoomie, przy którym widać granice działek. */
-    fun showPlace(point: GeoPoint) = _state.update {
-        it.copy(cameraRequest = CameraRequest.ShowPlace(it.nextCameraId(), point, PLACE_ZOOM))
+    /**
+     * Przenieś mapę do miejsca (np. wsi) – domyślnie na zoomie, przy którym widać granice działek;
+     * bliżej, np. [CLOSE_ZOOM] dla pojedynczego punktu jak baza.
+     */
+    fun showPlace(point: GeoPoint, zoom: Double = PLACE_ZOOM) = _state.update {
+        it.copy(cameraRequest = CameraRequest.ShowPlace(it.nextCameraId(), point, zoom))
     }
 
     fun selectBaseLayer(layer: BaseLayer) = _state.update { it.copy(baseLayer = layer) }
@@ -148,8 +151,11 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
 
     private fun MapChromeState.nextCenterOnMe() = CameraRequest.CenterOnMe(nextCameraId())
 
-    private companion object {
+    companion object {
         /** Ok. 1–2 km szerokości ekranu: cała wieś z polami, a granice działek już widoczne. */
-        const val PLACE_ZOOM = 14.5
+        private const val PLACE_ZOOM = 14.5
+
+        /** Kilkaset metrów – podwórze, silos, najbliższe pola. */
+        const val CLOSE_ZOOM = 16.5
     }
 }

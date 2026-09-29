@@ -48,7 +48,8 @@ nowe pole z działek (dotyk / wieś „sulmow" przez Nominatim OSM / numer „Ot
 po rogach → nazwa, kolor, wjazdy (kilka; dotknięcie wjazdu usuwa) → zapis; działka może należeć tylko do jednego pola;
 dotknięcie pola na liście → pole na mapie (`FieldScreen`, dotknięcie innego pola przełącza) → „Edytuj pole";
 na głównej mapie dotknięcie pola pokazuje kartę pola (admin: „Edytuj pole"); usuwanie z „Cofnij" (`DeletedFieldBin`);
-pola i wjazdy widoczne na mapie każdej roli.
+pola i wjazdy widoczne na mapie każdej roli. Baza (silos/pryzma): admin → „Baza" (`feature-fields/.../base`,
+zapis `data/.../base`), czarna kropka „Baza" na mapach.
 Następny: M3 – Firebase Auth (SMS), zbiór, zaproszenia, role.
 Kamienie milowe: docs/BRIEF.md §9.
 

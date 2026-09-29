@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import pl.farmtracker.app.BuildConfig
+import pl.farmtracker.feature.fields.base.BaseEditorScreen
 import pl.farmtracker.feature.fields.editor.FieldEditorScreen
 import pl.farmtracker.feature.fields.list.FieldsListScreen
 import pl.farmtracker.feature.fields.view.FieldScreen
@@ -58,6 +59,7 @@ private fun FarmTrackerNavHost(
         composable<AdminDestination> {
             AdminScreen(
                 onOpenFields = { navController.navigate(FieldsListDestination) { launchSingleTop = true } },
+                onOpenBase = { navController.navigate(BaseSetupDestination) { launchSingleTop = true } },
                 onSwitchRole = onSwitchRole,
             )
         }
@@ -73,6 +75,12 @@ private fun FarmTrackerNavHost(
                 onAddField = { navController.navigate(FieldEditorDestination()) { launchSingleTop = true } },
                 onOpenField = { id -> navController.navigate(FieldDestination(id)) { launchSingleTop = true } },
                 onShowMap = openMap,
+            )
+        }
+        composable<BaseSetupDestination> {
+            BaseEditorScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
             )
         }
         composable<FieldDestination> {

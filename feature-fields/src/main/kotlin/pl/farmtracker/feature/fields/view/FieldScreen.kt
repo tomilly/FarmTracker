@@ -46,6 +46,7 @@ fun FieldScreen(
     viewModel: FieldViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val base by viewModel.base.collectAsStateWithLifecycle()
 
     when (val state = uiState) {
         FieldViewUiState.Loading -> Unit
@@ -61,6 +62,7 @@ fun FieldScreen(
                 // Bieżące pole wyróżnione – po przełączeniu dotykiem widać, które jest teraz pokazane.
                 highlight = state.field.shape,
                 entryPoints = state.allFields.flatMap { it.entryPoints },
+                base = base,
             ),
             modifier = modifier,
         ) {

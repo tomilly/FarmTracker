@@ -20,6 +20,7 @@ import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.fieldAt
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.MapChromeController
+import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelRepository
@@ -42,6 +43,7 @@ class MapViewModel @Inject constructor(
     private val parcelRepository: ParcelRepository,
     fieldRepository: FieldRepository,
     sessionRepository: SessionRepository,
+    baseRepository: BaseRepository,
 ) : ViewModel() {
 
     val chrome = MapChromeController()
@@ -49,6 +51,11 @@ class MapViewModel @Inject constructor(
     /** Pola zbioru – widoczne na mapie dla każdej roli. */
     val fields: StateFlow<List<Field>> = fieldRepository.fields
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Baza (silos / pryzma) – cel kursów kierowców, widoczna dla każdej roli. */
+    val base: StateFlow<GeoPoint?> = baseRepository.base
+        .map { it?.location }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Pola zmienia tylko admin – pozostałe role widzą przy polu sam opis. */
     val canEditFields: StateFlow<Boolean> = sessionRepository.currentRole

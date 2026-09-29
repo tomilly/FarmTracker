@@ -5,9 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.fieldAt
@@ -15,6 +18,7 @@ import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.BaseLayer
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapChromeState
+import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.field.FieldRepository
 import javax.inject.Inject
 
@@ -37,6 +41,7 @@ sealed interface FieldViewUiState {
 @HiltViewModel
 class FieldViewModel @Inject constructor(
     fieldRepository: FieldRepository,
+    baseRepository: BaseRepository,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -44,6 +49,11 @@ class FieldViewModel @Inject constructor(
 
     /** Na zdjęciu widać, co rośnie na polu i gdzie jest wjazd. */
     val chrome = MapChromeController(MapChromeState(baseLayer = BaseLayer.PHOTO))
+
+    /** Baza – żeby było widać, skąd i dokąd jeżdżą kierowcy. */
+    val base: StateFlow<GeoPoint?> = baseRepository.base
+        .map { it?.location }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _uiState = MutableStateFlow<FieldViewUiState>(FieldViewUiState.Loading)
     val uiState: StateFlow<FieldViewUiState> = _uiState.asStateFlow()

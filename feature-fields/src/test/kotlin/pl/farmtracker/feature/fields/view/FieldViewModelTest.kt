@@ -13,6 +13,7 @@ import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.domain.geo.bounds
 import pl.farmtracker.core.map.BaseLayer
 import pl.farmtracker.core.map.CameraRequest
+import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 
@@ -29,7 +30,7 @@ class FieldViewModelTest {
     private val fields = FakeFieldRepository(listOf(field, neighbour))
 
     // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
-    private val viewModel by lazy { FieldViewModel(fields, SavedStateHandle(mapOf(FieldViewModel.FIELD_ID_ARG to "f-1"))) }
+    private val viewModel by lazy { FieldViewModel(fields, FakeBaseRepository(), SavedStateHandle(mapOf(FieldViewModel.FIELD_ID_ARG to "f-1"))) }
 
     @Test
     fun `shows the whole field on the photo, with the fields around it`() {
