@@ -18,6 +18,10 @@
     <string name="roles_position_searching">Szukam Twojej pozycji…</string>
     <string name="roles_position_on_field">Jesteś na polu: %1$s</string>
     <string name="roles_position_off_field">Jesteś poza polami</string>
+    <string name="roles_position_loading">Ładujesz</string>
+    <string name="roles_position_to_base">Wracasz do bazy</string>
+    <string name="roles_position_to_field">Jedziesz na pole</string>
+    <string name="roles_position_at_base">Jesteś w bazie</string>
 
     <!-- Inni pracujący -->
     <string name="roles_nobody_working">%1$s nie pracuje</string>
@@ -25,6 +29,10 @@
     <string name="roles_coworker_on_field">na polu %1$s</string>
     <string name="roles_coworker_off_field">w drodze</string>
     <string name="roles_coworker_stale">brak pozycji od kilku minut</string>
+    <string name="roles_coworker_loading">ładuje</string>
+    <string name="roles_coworker_to_base">wraca do bazy</string>
+    <string name="roles_coworker_to_field">jedzie na pole</string>
+    <string name="roles_coworker_at_base">w bazie</string>
 
     <string name="roles_open_map">Mapa</string>
 

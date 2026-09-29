@@ -47,7 +47,7 @@ class DriverViewModel @Inject constructor(
     val uiState: StateFlow<DriverUiState> = combine(workRepository.isWorking, crewWatch.snapshot) { working, crew ->
         DriverUiState(
             isWorking = working,
-            position = myPosition(crew.locations, crew.fields, crew.nowMillis),
+            position = myPosition(crew.locations, crew.fields, crew.nowMillis, withTrip = true),
             harvesters = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.HARVESTER),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DriverUiState())

@@ -4,6 +4,7 @@ import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.testing.FakeClock
@@ -28,12 +29,14 @@ class CrewFixture(myRole: Role = Role.HARVESTER) {
     val locations = FakeLiveLocationRepository(myRole = myRole)
     val watch = CrewWatch(locations, FakeFieldRepository(listOf(field)), clock)
 
-    fun someone(name: String, role: Role, point: GeoPoint, fieldId: String?, minutesAgo: Int = 0) = LiveLocation(
-        userId = name,
-        name = name,
-        role = role,
-        point = point,
-        timeMillis = clock.now - minutesAgo * 60_000L,
-        fieldId = fieldId,
-    )
+    fun someone(name: String, role: Role, point: GeoPoint, fieldId: String?, minutesAgo: Int = 0, trip: Trip? = null) =
+        LiveLocation(
+            userId = name,
+            name = name,
+            role = role,
+            point = point,
+            timeMillis = clock.now - minutesAgo * 60_000L,
+            fieldId = fieldId,
+            trip = trip,
+        )
 }

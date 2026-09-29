@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.HARVESTS
 import pl.farmtracker.data.harvest.FirestoreHarvestRepository.Companion.LAT
@@ -27,7 +28,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Pozycje w zbiorze: `harvests/{id}/locations/{uid}` = `{name, role, lat, lon, time, fieldId}` – jeden dokument
+ * Pozycje w zbiorze: `harvests/{id}/locations/{uid}` = `{name, role, lat, lon, time, fieldId, trip}` – jeden dokument
  * na osobę, nadpisywany. Zapis nie czeka na serwer: bez zasięgu Firestore wyśle ostatnią pozycję później.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -61,6 +62,7 @@ class FirestoreLiveLocationRepository @Inject constructor(
                 LON to report.point.longitude,
                 TIME to report.timeMillis,
                 FIELD_ID to report.fieldId,
+                TRIP to report.trip?.name,
             ),
         )
     }
@@ -87,6 +89,7 @@ class FirestoreLiveLocationRepository @Inject constructor(
             point = GeoPoint(latitude = lat, longitude = lon),
             timeMillis = getLong(TIME) ?: return null,
             fieldId = getString(FIELD_ID),
+            trip = getString(TRIP)?.let { stored -> Trip.entries.firstOrNull { it.name == stored } },
             isMe = id == myId,
         )
     }
@@ -95,5 +98,6 @@ class FirestoreLiveLocationRepository @Inject constructor(
         const val LOCATIONS = "locations"
         const val TIME = "time"
         const val FIELD_ID = "fieldId"
+        const val TRIP = "trip"
     }
 }

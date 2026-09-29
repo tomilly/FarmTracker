@@ -68,6 +68,10 @@ M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokaliza
 (`PositionReport.needsUpdate`). Pozycje: `LiveLocationRepository` – Firestore `harvests/{id}/locations/{uid}`
 albo lokalnie (tylko własna). Ekrany ról: „Jesteś na polu: …", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
 mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 12 h.
+Kierowca w pracy widzi mapę na cały ekran (jedzie za nim). Status kierowcy bez klikania: `core-domain/Trip.kt`
+(`TripTracker`: przy sieczkarni 2 pozycje ≤ 40 m → ładuje; przy bazie ≤ 150 m → w bazie (przed polem); zjechał z pola →
+wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
+wysyłany w `PositionReport.trip`.
 Kamienie milowe: docs/BRIEF.md §9.
 
 ## Emulator (uwagi)

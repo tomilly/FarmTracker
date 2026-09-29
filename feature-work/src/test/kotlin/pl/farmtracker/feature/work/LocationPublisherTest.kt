@@ -7,10 +7,15 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import pl.farmtracker.core.domain.Base
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
+import pl.farmtracker.core.domain.LiveLocation
+import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.domain.geo.GeoPolygon
+import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakeClock
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeLiveLocationRepository
@@ -27,6 +32,7 @@ class LocationPublisherTest {
     )
     private val onTheField = GeoPoint(50.005, 17.005)
     private val onTheRoad = GeoPoint(50.02, 17.005)
+    private val base = GeoPoint(49.95, 17.005)
 
     private val fields = FakeFieldRepository(listOf(field))
     private val locations = FakeLiveLocationRepository()
@@ -36,7 +42,7 @@ class LocationPublisherTest {
 
     private fun TestScope.startPublishing() {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            LocationPublisher(fields, locations, clock).publish(gps) { shownFields += it?.name }
+            LocationPublisher(fields, FakeBaseRepository(Base(base)), locations, clock).publish(gps) { shownFields += it?.name }
         }
     }
 
@@ -73,6 +79,22 @@ class LocationPublisherTest {
 
         assertEquals(listOf("f1", null), locations.published.map { it.fieldId })
         assertEquals(listOf("Za lasem", null), shownFields)
+    }
+
+    @Test
+    fun `the driver's status goes out on its own - loading beside the harvester, then back to the base`() = runTest {
+        locations.locations.value = listOf(
+            LiveLocation("r", "Rysiek", Role.HARVESTER, onTheField, timeMillis = 0, fieldId = "f1"),
+        )
+        startPublishing()
+
+        gps.emit(GeoPoint(50.0051, 17.005))
+        clock.now = 5_000
+        gps.emit(GeoPoint(50.0051, 17.005))
+        clock.now = 10_000
+        gps.emit(GeoPoint(50.0, 17.005 - 0.01)) // za zachodnią granicą pola, w drodze
+
+        assertEquals(listOf(Trip.ON_FIELD, Trip.LOADING, Trip.TO_BASE), locations.published.map { it.trip })
     }
 
     @Test

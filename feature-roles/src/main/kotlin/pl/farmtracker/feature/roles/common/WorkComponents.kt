@@ -22,6 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Agriculture
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.MyLocation
@@ -49,6 +53,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.ui.RoleUi
 import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.StatusPill
@@ -186,8 +191,38 @@ internal fun MyPositionPills(position: MyPosition, modifier: Modifier = Modifier
                 icon = Icons.AutoMirrored.Filled.ArrowForward,
                 tone = Tone.Warning,
             )
+            MyPosition.Loading -> StatusPill(
+                text = stringResource(R.string.roles_position_loading),
+                icon = Icons.Filled.Download,
+                tone = Tone.Go,
+            )
+            MyPosition.ToBase -> StatusPill(
+                text = stringResource(R.string.roles_position_to_base),
+                icon = Icons.Filled.LocalShipping,
+                tone = Tone.Go,
+            )
+            MyPosition.ToField -> StatusPill(
+                text = stringResource(R.string.roles_position_to_field),
+                icon = Icons.Filled.Route,
+                tone = Tone.Go,
+            )
+            MyPosition.AtBase -> StatusPill(
+                text = stringResource(R.string.roles_position_at_base),
+                icon = Icons.Filled.Warehouse,
+                tone = Tone.Go,
+            )
         }
     }
+}
+
+/** Co robi kierowca – jego status wykryty z pozycji, np. „ładuje", „wraca do bazy". */
+@Composable
+private fun Coworker.tripText(): String? = when (trip) {
+    Trip.LOADING -> stringResource(R.string.roles_coworker_loading)
+    Trip.TO_BASE -> stringResource(R.string.roles_coworker_to_base)
+    Trip.TO_FIELD -> stringResource(R.string.roles_coworker_to_field)
+    Trip.AT_BASE -> stringResource(R.string.roles_coworker_at_base)
+    Trip.ON_FIELD, null -> null
 }
 
 /** Gdzie są inni w danej roli, np. „Marek – na polu Za lasem"; nikt – „Sieczkarnia nie pracuje". */
@@ -201,8 +236,10 @@ internal fun CoworkerPills(role: Role, coworkers: List<Coworker>, modifier: Modi
             )
         }
         coworkers.forEach { coworker ->
+            val tripText = coworker.tripText()
             val where = when {
                 coworker.isStale -> stringResource(R.string.roles_coworker_stale)
+                tripText != null -> tripText
                 coworker.fieldName != null -> stringResource(R.string.roles_coworker_on_field, coworker.fieldName)
                 else -> stringResource(R.string.roles_coworker_off_field)
             }
@@ -211,7 +248,7 @@ internal fun CoworkerPills(role: Role, coworkers: List<Coworker>, modifier: Modi
                 icon = RoleUi.icon(coworker.role),
                 tone = when {
                     coworker.isStale -> Tone.Neutral
-                    coworker.fieldName != null -> Tone.Go
+                    tripText != null || coworker.fieldName != null -> Tone.Go
                     else -> Tone.Warning
                 },
             )

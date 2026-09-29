@@ -10,6 +10,7 @@ import org.junit.Rule
 import org.junit.Test
 import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.Trip
 import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakeWorkRepository
@@ -72,6 +73,17 @@ class DriverViewModelTest {
         crew.locations.publish(PositionReport(crew.onTheField, "f1", crew.clock.now))
 
         assertEquals(MyPosition.OnField("Za lasem"), state.position)
+    }
+
+    @Test
+    fun `the driver sees their own status, detected by the phone`() = driverTest {
+        viewModel.startWork()
+
+        crew.locations.publish(PositionReport(crew.onTheField, "f1", crew.clock.now, Trip.LOADING))
+        assertEquals(MyPosition.Loading, state.position)
+
+        crew.locations.publish(PositionReport(crew.onTheRoad, null, crew.clock.now, Trip.TO_BASE))
+        assertEquals(MyPosition.ToBase, state.position)
     }
 
     @Test
