@@ -204,7 +204,7 @@ class MapViewModelTest {
             locations.locations.value = listOf(
                 someone("Rysiek", Role.HARVESTER, minutesAgo = 0),
                 someone("Marek", Role.DRIVER, minutesAgo = 5),
-                someone("Janek", Role.DRIVER, minutesAgo = 13 * 60),
+                someone("Janek", Role.DRIVER, minutesAgo = 3 * 60),
             )
             locations.publish(PositionReport(tapPoint, fieldId = null, timeMillis = clock.now))
             viewModel.people.launchIn(backgroundScope)
@@ -217,4 +217,15 @@ class MapViewModelTest {
                 viewModel.people.value,
             )
         }
+
+    @Test
+    fun `the field where the harvester works is lit up`() = runTest(mainDispatcherRule.testDispatcher) {
+        locations.locations.value = listOf(
+            LiveLocation("h1", "Rysiek", Role.HARVESTER, inField, timeMillis = clock.now, fieldId = "za-lasem"),
+            LiveLocation("d1", "Marek", Role.DRIVER, inField, timeMillis = clock.now, fieldId = "przy-drodze"),
+        )
+        viewModel.activeFieldIds.launchIn(backgroundScope)
+
+        assertEquals(setOf("za-lasem"), viewModel.activeFieldIds.value)
+    }
 }

@@ -24,6 +24,7 @@ import pl.farmtracker.feature.roles.common.MyPositionPills
 import pl.farmtracker.feature.roles.common.OpenMapButton
 import pl.farmtracker.feature.roles.common.StartWorkButton
 import pl.farmtracker.feature.roles.common.StopWorkButton
+import pl.farmtracker.feature.roles.common.WorkMap
 
 @Composable
 fun HarvesterScreen(
@@ -33,16 +34,33 @@ fun HarvesterScreen(
     viewModel: HarvesterViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    HarvesterContent(
-        uiState = uiState,
-        onStartWork = viewModel::startWork,
-        onStopWork = viewModel::stopWork,
-        onOpenMap = onOpenMap,
-        onSwitchRole = onSwitchRole,
-        modifier = modifier,
-    )
+    if (uiState.isWorking) {
+        val overlays by viewModel.overlays.collectAsStateWithLifecycle()
+        // Sieczkarnia w pracy: mapa na cały ekran, jedzie za nią, z przyczepami, które do niej jadą.
+        WorkMap(
+            role = Role.HARVESTER,
+            chrome = viewModel.chrome,
+            overlays = overlays,
+            onSwitchRole = onSwitchRole,
+            modifier = modifier,
+        ) {
+            MyPositionPills(uiState.position)
+            CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
+            StopWorkButton(onStopWork = viewModel::stopWork)
+        }
+    } else {
+        HarvesterContent(
+            uiState = uiState,
+            onStartWork = viewModel::startWork,
+            onStopWork = viewModel::stopWork,
+            onOpenMap = onOpenMap,
+            onSwitchRole = onSwitchRole,
+            modifier = modifier,
+        )
+    }
 }
 
+/** Przed pracą (i w podglądach) – w pracy sieczkarnia widzi mapę ([WorkMap]). */
 @Composable
 internal fun HarvesterContent(
     uiState: HarvesterUiState,

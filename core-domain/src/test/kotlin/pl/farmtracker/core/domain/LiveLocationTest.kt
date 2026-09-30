@@ -1,5 +1,6 @@
 package pl.farmtracker.core.domain
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,12 +36,25 @@ class LiveLocationTest {
     }
 
     @Test
-    fun `a position becomes stale after 3 minutes and disappears after 12 hours`() {
+    fun `a position becomes stale after 3 minutes and disappears after 2 hours`() {
         val location = LiveLocation("u1", "Marek", Role.HARVESTER, here, timeMillis = 0)
 
         assertFalse(location.isStaleAt(3 * 60_000))
         assertTrue(location.isStaleAt(3 * 60_000 + 1))
-        assertFalse(location.isGoneAt(12 * 60 * 60_000))
-        assertTrue(location.isGoneAt(12 * 60 * 60_000 + 1))
+        assertFalse(location.isGoneAt(2 * 60 * 60_000))
+        assertTrue(location.isGoneAt(2 * 60 * 60_000 + 1))
+    }
+
+    @Test
+    fun `active fields - where a harvester is, also without signal for a while, not where drivers are`() {
+        val now = 3 * 60 * 60_000L
+        val locations = listOf(
+            LiveLocation("h1", "Rysiek", Role.HARVESTER, here, timeMillis = now - 10 * 60_000, fieldId = "za-lasem"),
+            LiveLocation("h2", "Staszek", Role.HARVESTER, here, timeMillis = now, fieldId = null),
+            LiveLocation("h3", "Józek", Role.HARVESTER, here, timeMillis = 0, fieldId = "stare"),
+            LiveLocation("d1", "Marek", Role.DRIVER, here, timeMillis = now, fieldId = "przy-drodze"),
+        )
+
+        assertEquals(setOf("za-lasem"), locations.activeFieldIds(now))
     }
 }

@@ -15,6 +15,8 @@ if (firebaseConfigured) {
 // `-Pfarmtracker.demo` – wersja pokazowa: lokalna, z udawaną sieczkarnią na pierwszym polu (nagrania, próby „ładuje").
 val demo = providers.gradleProperty("farmtracker.demo").isPresent
 val sharedHarvest = firebaseConfigured && !demo && !providers.gradleProperty("farmtracker.localOnly").isPresent
+// `-Pfarmtracker.abi=arm64-v8a` – tylko jeden procesor: mniejszy plik do wysłania na telefon (mapa ma bibliotekę na każdy).
+val onlyAbi = providers.gradleProperty("farmtracker.abi").orNull
 
 android {
     namespace = "pl.farmtracker.app"
@@ -25,6 +27,7 @@ android {
         versionName = "0.1.0"
         buildConfigField("boolean", "SHARED_HARVEST", sharedHarvest.toString())
         buildConfigField("boolean", "DEMO", demo.toString())
+        if (onlyAbi != null) ndk { abiFilters += onlyAbi }
     }
 
     buildFeatures {
@@ -36,6 +39,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Paczka do prób na telefonach (instalacja z pliku) – podpisana kluczem testowym tego komputera,
+            // tym samym co wersja debug (jeden odcisk SHA w Firebase). Przed Google Play: własny klucz wydania.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }

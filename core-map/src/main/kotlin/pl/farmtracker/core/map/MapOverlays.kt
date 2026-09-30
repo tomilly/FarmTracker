@@ -15,6 +15,7 @@ import pl.farmtracker.core.domain.geo.GeoPolygon
  * @param entryPoints wjazdy na pola (zielone kropki z podpisem „Wjazd")
  * @param base baza zbioru – silos / pryzma (czarna kropka z podpisem „Baza")
  * @param people inni pracujący – kropka w kolorze roli z imieniem i rolą (siebie pokazuje niebieska kropka „ja")
+ * @param activeFieldIds pola, na których pracuje sieczkarnia – mocniej zabarwione, z grubszym obrysem
  * @param keepInView gdy mapa jedzie za mną – oddala się tyle, żeby te punkty też były na ekranie (np. sieczkarnia
  *   u kierowcy); przestaje, gdy ktoś sam przesunie albo przybliży mapę, wraca po „Gdzie jestem"
  */
@@ -25,6 +26,7 @@ data class MapOverlays(
     val entryPoints: List<GeoPoint> = emptyList(),
     val base: GeoPoint? = null,
     val people: List<MapPerson> = emptyList(),
+    val activeFieldIds: Set<String> = emptySet(),
     val keepInView: List<GeoPoint> = emptyList(),
 )
 

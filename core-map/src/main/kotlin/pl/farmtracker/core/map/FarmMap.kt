@@ -102,8 +102,13 @@ private const val SELECTION_LINE_WIDTH = 3f
 
 private const val FIELD_COLOR_PROPERTY = "color"
 private const val FIELD_NAME_PROPERTY = "name"
+private const val FIELD_ACTIVE_PROPERTY = "active"
 private const val FIELD_FILL_OPACITY = 0.3f
 private const val FIELD_LINE_WIDTH = 2.5f
+
+// Pole, na którym pracuje sieczkarnia: mocniejszy kolor i grubszy obrys – od razu widać, dokąd jechać.
+private const val ACTIVE_FIELD_FILL_OPACITY = 0.45f
+private const val ACTIVE_FIELD_LINE_WIDTH = 6f
 
 // Czcionka z mapy bazowej (OpenFreeMap); biały tekst z czarną obwódką czytelny i na mapie, i na zdjęciu.
 private const val FIELD_LABEL_FONT = "Noto Sans Bold"
@@ -253,10 +258,10 @@ internal fun FarmMap(
         style?.applyVisibility(baseLayer, showParcels)
     }
 
-    LaunchedEffect(style, overlays.fields) {
+    LaunchedEffect(style, overlays.fields, overlays.activeFieldIds) {
         val loadedStyle = style ?: return@LaunchedEffect
         loadedStyle.getSourceAs<GeoJsonSource>(MapSources.FIELDS_SOURCE_ID)
-            ?.setGeoJson(overlays.fields.toFieldsFeatureCollection())
+            ?.setGeoJson(overlays.fields.toFieldsFeatureCollection(overlays.activeFieldIds))
         loadedStyle.getSourceAs<GeoJsonSource>(MapSources.FIELD_LABELS_SOURCE_ID)
             ?.setGeoJson(overlays.fields.toLabelsFeatureCollection())
     }
@@ -430,10 +435,14 @@ private fun Style.addFarmLayers(entryLabel: String, baseLabel: String) {
     addSource(GeoJsonSource(MapSources.FIELDS_SOURCE_ID))
     addSource(GeoJsonSource(MapSources.FIELD_LABELS_SOURCE_ID))
     val fieldColor = Expression.toColor(Expression.get(FIELD_COLOR_PROPERTY))
+    val fieldActive = Expression.toBool(Expression.get(FIELD_ACTIVE_PROPERTY))
     val fieldsFill = FillLayer(MapSources.FIELDS_FILL_LAYER_ID, MapSources.FIELDS_SOURCE_ID)
-        .withProperties(fillColor(fieldColor), fillOpacity(FIELD_FILL_OPACITY))
+        .withProperties(
+            fillColor(fieldColor),
+            fillOpacity(fieldActive.pick(ACTIVE_FIELD_FILL_OPACITY, FIELD_FILL_OPACITY)),
+        )
     val fieldsLine = LineLayer(MapSources.FIELDS_LINE_LAYER_ID, MapSources.FIELDS_SOURCE_ID)
-        .withProperties(lineColor(fieldColor), lineWidth(FIELD_LINE_WIDTH))
+        .withProperties(lineColor(fieldColor), lineWidth(fieldActive.pick(ACTIVE_FIELD_LINE_WIDTH, FIELD_LINE_WIDTH)))
     val fieldsLabel = SymbolLayer(MapSources.FIELDS_LABEL_LAYER_ID, MapSources.FIELD_LABELS_SOURCE_ID)
         .withProperties(
             textField(Expression.get(FIELD_NAME_PROPERTY)),
@@ -572,13 +581,18 @@ private fun List<GeoPoint>.toDraftFeatureCollection(): FeatureCollection {
 private fun List<GeoPoint>.toPointsFeatureCollection(): FeatureCollection =
     FeatureCollection.fromFeatures(map { Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)) })
 
-private fun List<Field>.toFieldsFeatureCollection(): FeatureCollection = FeatureCollection.fromFeatures(
+private fun List<Field>.toFieldsFeatureCollection(activeIds: Set<String>): FeatureCollection = FeatureCollection.fromFeatures(
     map { field ->
         Feature.fromGeometry(field.shape.toMultiPolygon()).apply {
             addStringProperty(FIELD_COLOR_PROPERTY, FieldColorUi.color(field.color).toHex())
+            addBooleanProperty(FIELD_ACTIVE_PROPERTY, field.id in activeIds)
         }
     },
 )
+
+/** Warunek w stylu mapy: [whenTrue], gdy wyrażenie prawdziwe, inaczej [otherwise]. */
+private fun Expression.pick(whenTrue: Float, otherwise: Float): Expression =
+    Expression.switchCase(this, Expression.literal(whenTrue), Expression.literal(otherwise))
 
 private fun List<Field>.toLabelsFeatureCollection(): FeatureCollection = FeatureCollection.fromFeatures(
     mapNotNull { field ->

@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.activeFieldIds
 import pl.farmtracker.core.domain.fieldAt
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.MapChromeController
@@ -69,6 +70,12 @@ class MapViewModel @Inject constructor(
         combine(liveLocationRepository.locations, clock.ticks()) { locations, now ->
             locations.toMapPeople(maxOf(now, clock.nowMillis()))
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Pola, na których pracuje sieczkarnia – podświetlone. */
+    val activeFieldIds: StateFlow<Set<String>> =
+        combine(liveLocationRepository.locations, clock.ticks()) { locations, now ->
+            locations.activeFieldIds(maxOf(now, clock.nowMillis()))
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** Pola zmienia tylko admin – pozostałe role widzą przy polu sam opis. */
     val canEditFields: StateFlow<Boolean> = sessionRepository.currentRole

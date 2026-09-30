@@ -23,12 +23,12 @@ data class LiveLocation(
     /** Dawno bez nowej pozycji (brak zasięgu, wyłączony telefon) – pokazujemy ją z dopiskiem, na szaro. */
     fun isStaleAt(nowMillis: Long): Boolean = nowMillis - timeMillis > STALE_AFTER_MILLIS
 
-    /** Pozycja sprzed wielu godzin (telefon zgasł bez „Kończę pracę") – już jej nie pokazujemy. */
+    /** Pozycja sprzed ponad 2 godzin (telefon zgasł bez „Kończę pracę") – już jej nie pokazujemy. */
     fun isGoneAt(nowMillis: Long): Boolean = nowMillis - timeMillis > GONE_AFTER_MILLIS
 
     companion object {
         const val STALE_AFTER_MILLIS = 3 * 60_000L
-        const val GONE_AFTER_MILLIS = 12 * 60 * 60_000L
+        const val GONE_AFTER_MILLIS = 2 * 60 * 60_000L
     }
 }
 
@@ -57,3 +57,10 @@ data class PositionReport(
         const val MIN_DISTANCE_METERS = 25.0
     }
 }
+
+/**
+ * Pola, na których pracuje sieczkarnia – podświetlone na mapach. Także gdy sieczkarnia chwilę nie ma zasięgu
+ * (na polach to częste); przestaje, gdy zjedzie z pola, skończy pracę albo jej pozycja zniknie ([LiveLocation.isGoneAt]).
+ */
+fun List<LiveLocation>.activeFieldIds(nowMillis: Long): Set<String> =
+    filter { it.role == Role.HARVESTER && !it.isGoneAt(nowMillis) }.mapNotNullTo(mutableSetOf()) { it.fieldId }

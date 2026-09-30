@@ -38,6 +38,8 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
 - Build: `./gradlew assembleDebug`
 - Testy: `./gradlew test`
 - Lint: `./gradlew lint`
+- Paczka na telefon (instalacja z pliku, ~16 MB): `./gradlew assembleRelease -Pfarmtracker.abi=arm64-v8a` →
+  `app/build/outputs/apk/release/app-release.apk` (podpis kluczem debug tego komputera; bez „Zmień rolę").
 
 ## Stan
 M0 gotowe (szkielet, motyw, nawigacja z 4 ekranami ról, CI). Wybór roli jest tymczasowy (do M3).
@@ -72,8 +74,10 @@ M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokaliza
 `LocationPublisher`: GPS → pole (`fieldWith`, 30 m zapasu przy wyjeździe) → wysyłka tylko gdy trzeba
 (`PositionReport.needsUpdate`). Pozycje: `LiveLocationRepository` – Firestore `harvests/{id}/locations/{uid}`
 albo lokalnie (tylko własna). Ekrany ról: „Jesteś na polu: …", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
-mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 12 h.
-Kierowca w pracy widzi mapę na cały ekran (jedzie za nim). Status kierowcy bez klikania: `core-domain/Trip.kt`
+mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 2 h.
+Kierowca i sieczkarnia w pracy widzą mapę na cały ekran (`common/WorkMap`): jedzie za nimi i oddala się tyle, by
+była widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`); pole z sieczkarnią podświetlone na mapach
+(`activeFieldIds`). Status kierowcy bez klikania: `core-domain/Trip.kt`
 (`TripTracker`: przy sieczkarni 2 pozycje ≤ 40 m → ładuje; przy bazie ≤ 150 m → w bazie (przed polem); zjechał z pola →
 wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
 wysyłany w `PositionReport.trip`.

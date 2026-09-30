@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapOverlays
-import pl.farmtracker.core.map.toMapPeople
 import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.work.WorkRepository
 import pl.farmtracker.feature.roles.common.Coworker
@@ -21,6 +20,7 @@ import pl.farmtracker.feature.roles.common.CrewWatch
 import pl.farmtracker.feature.roles.common.MyPosition
 import pl.farmtracker.feature.roles.common.coworkers
 import pl.farmtracker.feature.roles.common.myPosition
+import pl.farmtracker.feature.roles.common.toWorkMapOverlays
 import javax.inject.Inject
 
 data class DriverUiState(
@@ -54,16 +54,8 @@ class DriverViewModel @Inject constructor(
 
     /** Pola, wjazdy, baza i inni pracujący – na mapie w czasie pracy. */
     val overlays: StateFlow<MapOverlays> = combine(crewWatch.snapshot, baseRepository.base) { crew, base ->
-        MapOverlays(
-            fields = crew.fields,
-            entryPoints = crew.fields.flatMap { it.entryPoints },
-            base = base?.location,
-            people = crew.locations.toMapPeople(crew.nowMillis),
-            // Kierowca jedzie do sieczkarni i od niej – ma być na ekranie razem z nim (stara pozycja nie oddala mapy).
-            keepInView = crew.locations
-                .filter { !it.isMe && it.role == Role.HARVESTER && !it.isStaleAt(crew.nowMillis) }
-                .map { it.point },
-        )
+        // Kierowca jedzie do sieczkarni i od niej – ma być na ekranie razem z nim.
+        crew.toWorkMapOverlays(base?.location) { it.role == Role.HARVESTER }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MapOverlays())
 
     init {

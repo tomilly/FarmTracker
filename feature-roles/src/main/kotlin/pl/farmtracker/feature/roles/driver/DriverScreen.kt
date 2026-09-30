@@ -15,11 +15,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapOverlays
-import pl.farmtracker.core.map.MapScaffold
-import pl.farmtracker.core.ui.RoleUi
 import pl.farmtracker.core.ui.component.RoleScaffold
 import pl.farmtracker.core.ui.component.StatusPill
-import pl.farmtracker.core.ui.component.SwitchRoleButton
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 import pl.farmtracker.feature.roles.common.Coworker
@@ -29,6 +26,7 @@ import pl.farmtracker.feature.roles.common.MyPositionPills
 import pl.farmtracker.feature.roles.common.OpenMapButton
 import pl.farmtracker.feature.roles.common.StartWorkButton
 import pl.farmtracker.feature.roles.common.StopWorkButton
+import pl.farmtracker.feature.roles.common.WorkMap
 
 @Composable
 fun DriverScreen(
@@ -73,17 +71,7 @@ private fun DriverWorkMap(
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    MapScaffold(
-        title = stringResource(RoleUi.labelRes(Role.DRIVER)),
-        icon = RoleUi.icon(Role.DRIVER),
-        onBack = null,
-        chrome = chrome,
-        onMapTap = {},
-        modifier = modifier,
-        overlays = overlays,
-        showParcelsToggle = false,
-        actions = { if (onSwitchRole != null) SwitchRoleButton(onClick = onSwitchRole) },
-    ) {
+    WorkMap(role = Role.DRIVER, chrome = chrome, overlays = overlays, onSwitchRole = onSwitchRole, modifier = modifier) {
         MyPositionPills(uiState.position)
         CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
         StopWorkButton(onStopWork = onStopWork)
