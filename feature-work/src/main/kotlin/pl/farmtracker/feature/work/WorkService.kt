@@ -52,10 +52,6 @@ class WorkService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            scope.launch { workRepository.setWorking(false) }
-            return START_NOT_STICKY
-        }
         if (!hasLocationPermission() || !startInForeground()) {
             // Zgodę cofnięto w ustawieniach albo Android nie pozwolił (aplikacja w tle) – praca się kończy,
             // żeby ekran roli nie twierdził, że inni nas widzą.
@@ -106,18 +102,18 @@ class WorkService : Service() {
         val openApp = packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
             PendingIntent.getActivity(this, 0, launch, PendingIntent.FLAG_IMMUTABLE)
         }
-        val stop = PendingIntent.getService(
-            this,
-            0,
-            Intent(this, WorkService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        // „Kończę pracę" nie kończy od razu (łatwo trafić przez przypadek) – otwiera aplikację z pytaniem „Skończyć pracę?".
+        val askToStop = packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
+            launch.setAction(ACTION_ASK_STOP)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            PendingIntent.getActivity(this, 1, launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_work_notification)
             .setContentTitle(getString(R.string.work_notification_title))
             .setContentText(text)
             .setContentIntent(openApp)
-            .addAction(0, getString(R.string.work_notification_stop), stop)
+            .addAction(0, getString(R.string.work_notification_stop), askToStop)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -133,7 +129,9 @@ class WorkService : Service() {
         private const val TAG = "FarmTrackerWork"
         private const val CHANNEL_ID = "work"
         private const val NOTIFICATION_ID = 1
-        private const val ACTION_STOP = "pl.farmtracker.work.STOP"
+
+        /** Otwarcie aplikacji z powiadomienia z pytaniem „Skończyć pracę?" (obsługuje `MainActivity`). */
+        const val ACTION_ASK_STOP = "pl.farmtracker.work.ASK_STOP"
 
         /**
          * Włącza udostępnianie, gdy trwa praca. Wołać z ekranu na wierzchu – Android pozwala zacząć śledzenie

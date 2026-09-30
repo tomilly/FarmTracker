@@ -140,8 +140,9 @@ internal fun StopWorkButton(onStopWork: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
+/** „Skończyć pracę?" – po małym przycisku na ekranie roli i po „Kończę pracę" w powiadomieniu. */
 @Composable
-private fun StopWorkDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun StopWorkDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Stop, contentDescription = null, tint = MaterialTheme.colorScheme.error) },

@@ -21,6 +21,7 @@ import pl.farmtracker.data.auth.AuthState
 import pl.farmtracker.data.harvest.HarvestRepository
 import pl.farmtracker.data.harvest.Membership
 import pl.farmtracker.data.session.SessionRepository
+import pl.farmtracker.data.work.WorkRepository
 import javax.inject.Inject
 
 sealed interface AppUiState {
@@ -43,15 +44,23 @@ class AppViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val authRepository: AuthRepository,
     private val harvestRepository: HarvestRepository,
+    private val workRepository: WorkRepository,
     @SharedHarvest private val sharedHarvest: Boolean,
 ) : ViewModel() {
 
     /** „Zmień rolę" (debug) w trybie zbioru – pokaż wybór roli zamiast ekranu roli ze zbioru. */
     private val pickingRole = MutableStateFlow(false)
 
+    private val askingToStopWork = MutableStateFlow(false)
+
     val uiState: StateFlow<AppUiState> =
         (if (sharedHarvest) sharedHarvestState() else localState())
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState.Loading)
+
+    /** Pytanie „Skończyć pracę?" nad każdym ekranem – po „Kończę pracę" w powiadomieniu. */
+    val confirmStopWork: StateFlow<Boolean> =
+        combine(askingToStopWork, workRepository.isWorking) { asking, working -> asking && working }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     init {
         // Rola wybrana na telefonie przed M3 nie może przykryć roli ze zbioru – poza wersją testową.
@@ -88,6 +97,20 @@ class AppViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** „Kończę pracę" w powiadomieniu – jak mały przycisk na ekranie roli, najpierw pytamy. */
+    fun askToStopWork() {
+        askingToStopWork.value = true
+    }
+
+    fun stopWork() {
+        askingToStopWork.value = false
+        viewModelScope.launch { workRepository.setWorking(false) }
+    }
+
+    fun keepWorking() {
+        askingToStopWork.value = false
     }
 
     /** Debug: wraca do wyboru roli. */

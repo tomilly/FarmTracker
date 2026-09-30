@@ -27,6 +27,7 @@ import pl.farmtracker.feature.fields.view.FieldScreen
 import pl.farmtracker.feature.map.MapScreen
 import pl.farmtracker.feature.roles.admin.AdminScreen
 import pl.farmtracker.feature.roles.base.BaseScreen
+import pl.farmtracker.feature.roles.common.StopWorkDialog
 import pl.farmtracker.feature.roles.driver.DriverScreen
 import pl.farmtracker.feature.roles.harvester.HarvesterScreen
 import pl.farmtracker.feature.roles.picker.RolePickerScreen
@@ -35,6 +36,8 @@ import pl.farmtracker.feature.team.TeamScreen
 @Composable
 fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val confirmStopWork by viewModel.confirmStopWork.collectAsStateWithLifecycle()
+    if (confirmStopWork) StopWorkDialog(onConfirm = viewModel::stopWork, onDismiss = viewModel::keepWorking)
     when (val state = uiState) {
         // Odczyt roli z dysku trwa chwilę – pusty ekran w kolorze tła zamiast migania wyboru roli.
         AppUiState.Loading -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))

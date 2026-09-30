@@ -12,6 +12,7 @@ import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.testing.FakeAuthRepository
 import pl.farmtracker.core.testing.FakeHarvestRepository
 import pl.farmtracker.core.testing.FakeSessionRepository
+import pl.farmtracker.core.testing.FakeWorkRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.auth.AuthState
 import pl.farmtracker.data.harvest.Membership
@@ -24,11 +25,13 @@ class AppViewModelTest {
     private val signedIn = AuthState.SignedIn("u1", "+48600000001")
     private val driver = Member("u1", "Marek", "+48600000001", Role.DRIVER)
     private val joinedAsDriver = Membership.Joined(Harvest("h-1", "Kukurydza 2026"), driver)
+    private val work = FakeWorkRepository()
 
     private fun local(role: Role?) = AppViewModel(
         FakeSessionRepository(initialRole = role),
         FakeAuthRepository(),
         FakeHarvestRepository(),
+        FakeWorkRepository(),
         sharedHarvest = false,
     )
 
@@ -36,7 +39,7 @@ class AppViewModelTest {
         auth: AuthState,
         membership: Membership = Membership.None,
         session: FakeSessionRepository = FakeSessionRepository(),
-    ) = AppViewModel(session, FakeAuthRepository(auth), FakeHarvestRepository(initial = membership), sharedHarvest = true)
+    ) = AppViewModel(session, FakeAuthRepository(auth), FakeHarvestRepository(initial = membership), work, sharedHarvest = true)
 
     @Test
     fun `without firebase and without a role the role picker is shown`() = runTest {
@@ -86,6 +89,51 @@ class AppViewModelTest {
 
             session.setRole(Role.BASE)
             assertEquals(AppUiState.Ready(BaseDestination), awaitReady())
+        }
+    }
+
+    @Test
+    fun `stop work from the notification asks first - yes ends work`() = runTest {
+        work.setWorking(true)
+        val viewModel = shared(signedIn, joinedAsDriver)
+
+        viewModel.confirmStopWork.test {
+            assertEquals(false, awaitItem())
+
+            viewModel.askToStopWork()
+            assertEquals(true, awaitItem())
+            assertEquals(true, work.isWorking.value)
+
+            viewModel.stopWork()
+            assertEquals(false, awaitItem())
+            assertEquals(false, work.isWorking.value)
+        }
+    }
+
+    @Test
+    fun `stop work from the notification - no keeps working`() = runTest {
+        work.setWorking(true)
+        val viewModel = shared(signedIn, joinedAsDriver)
+
+        viewModel.confirmStopWork.test {
+            assertEquals(false, awaitItem())
+            viewModel.askToStopWork()
+            assertEquals(true, awaitItem())
+
+            viewModel.keepWorking()
+            assertEquals(false, awaitItem())
+            assertEquals(true, work.isWorking.value)
+        }
+    }
+
+    @Test
+    fun `no question when work has already ended`() = runTest {
+        val viewModel = shared(signedIn, joinedAsDriver)
+
+        viewModel.confirmStopWork.test {
+            viewModel.askToStopWork()
+            assertEquals(false, awaitItem())
+            expectNoEvents()
         }
     }
 
