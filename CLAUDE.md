@@ -76,7 +76,7 @@ M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokaliza
 albo lokalnie (tylko własna). Ekrany ról: „Jesteś na polu: …", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
 mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 2 h.
 Kierowca i sieczkarnia w pracy widzą mapę na cały ekran (`common/WorkMap`): jedzie za nimi i oddala się tyle, by
-była widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`); pole z sieczkarnią podświetlone na mapach
+było widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`); pole z sieczkarnią podświetlone na mapach
 (`activeFieldIds`). Status kierowcy bez klikania: `core-domain/Trip.kt`
 (`TripTracker`: przy sieczkarni 2 pozycje ≤ 40 m → ładuje; przy bazie ≤ 150 m → w bazie (przed polem); zjechał z pola →
 wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
