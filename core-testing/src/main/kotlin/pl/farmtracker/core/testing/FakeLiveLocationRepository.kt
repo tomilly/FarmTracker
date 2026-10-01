@@ -19,7 +19,17 @@ class FakeLiveLocationRepository(
 
     override suspend fun publish(report: PositionReport) {
         published += report
-        val mine = LiveLocation(ME, "Ja", myRole, report.point, report.timeMillis, report.fieldId, report.trip, isMe = true)
+        val mine = LiveLocation(
+            ME,
+            "Ja",
+            myRole,
+            report.point,
+            report.timeMillis,
+            report.fieldId,
+            report.trip,
+            isMe = true,
+            stillSinceMillis = report.stillSinceMillis,
+        )
         locations.update { all -> all.filterNot { it.isMe } + mine }
     }
 

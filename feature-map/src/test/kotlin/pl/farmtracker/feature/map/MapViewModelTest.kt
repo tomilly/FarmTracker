@@ -10,6 +10,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import pl.farmtracker.core.domain.Base
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
 import pl.farmtracker.core.domain.LiveLocation
@@ -27,7 +28,7 @@ import pl.farmtracker.core.testing.FakeClock
 import pl.farmtracker.core.testing.FakeFieldRepository
 import pl.farmtracker.core.testing.FakeLiveLocationRepository
 import pl.farmtracker.core.testing.FakeParcelRepository
-import pl.farmtracker.core.testing.FakeSessionRepository
+import pl.farmtracker.core.testing.FakePeopleRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.data.parcel.ParcelLookup
 
@@ -38,12 +39,13 @@ class MapViewModelTest {
 
     private val parcels = FakeParcelRepository()
     // Leniwie: ViewModel startuje korutynę w init, więc musi powstać po podmianie Dispatchers.Main przez regułę.
-    private val session = FakeSessionRepository(Role.DRIVER)
+    private val people = FakePeopleRepository(Role.DRIVER)
+    private val baseRepo = FakeBaseRepository()
     private val fieldsRepo = FakeFieldRepository()
     private val locations = FakeLiveLocationRepository(myRole = Role.DRIVER)
     private val clock = FakeClock(now = 1_000_000)
     private val viewModel by lazy {
-        MapViewModel(parcels, fieldsRepo, session, FakeBaseRepository(), locations, clock)
+        MapViewModel(parcels, fieldsRepo, people, baseRepo, locations, clock)
     }
     private val selection get() = viewModel.parcelSelection.value
 
@@ -190,7 +192,7 @@ class MapViewModelTest {
         watchSelection()
         assertFalse(viewModel.canEditFields.value)
 
-        session.setRole(Role.ADMIN)
+        people.myRole.value = Role.ADMIN
 
         assertTrue(viewModel.canEditFields.value)
     }
@@ -227,5 +229,27 @@ class MapViewModelTest {
         viewModel.activeFieldIds.launchIn(backgroundScope)
 
         assertEquals(setOf("za-lasem"), viewModel.activeFieldIds.value)
+    }
+
+    @Test
+    fun `the admin map starts with all fields and the base in view`() = runTest(mainDispatcherRule.testDispatcher) {
+        people.myRole.value = Role.ADMIN
+        fieldsRepo.save(field)
+        val farAway = GeoPoint(51.02, 16.99)
+        baseRepo.save(Base(farAway))
+
+        viewModel.chrome.onStart(hasLocationPermission = true)
+
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+        assertEquals(GeoBounds(south = 51.0, west = 16.99, north = 51.02, east = 17.01), request.bounds)
+    }
+
+    @Test
+    fun `other roles start the map on themselves`() = runTest(mainDispatcherRule.testDispatcher) {
+        fieldsRepo.save(field)
+
+        viewModel.chrome.onStart(hasLocationPermission = true)
+
+        assertTrue(viewModel.chrome.state.value.cameraRequest is CameraRequest.CenterOnMe)
     }
 }

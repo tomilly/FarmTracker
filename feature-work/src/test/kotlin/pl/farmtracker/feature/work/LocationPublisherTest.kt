@@ -70,6 +70,19 @@ class LocationPublisherTest {
     }
 
     @Test
+    fun `others learn since when the phone stands still`() = runTest {
+        startPublishing()
+
+        gps.emit(onTheRoad)
+        clock.now = 30_000
+        gps.emit(onTheField)
+        clock.now = 400_000
+        gps.emit(onTheField)
+
+        assertEquals(listOf(0L, 30_000L, 30_000L), locations.published.map { it.stillSinceMillis })
+    }
+
+    @Test
     fun `leaving the field goes out right away`() = runTest {
         startPublishing()
 

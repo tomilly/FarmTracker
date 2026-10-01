@@ -80,6 +80,7 @@ private fun FarmTrackerNavHost(
         composable<BaseDestination> { BaseScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
         composable<AdminDestination> {
             AdminScreen(
+                onOpenMap = openMap,
                 onOpenFields = { navController.navigate(FieldsListDestination) { launchSingleTop = true } },
                 onOpenBase = { navController.navigate(BaseSetupDestination) { launchSingleTop = true } },
                 onOpenPeople = openPeople,

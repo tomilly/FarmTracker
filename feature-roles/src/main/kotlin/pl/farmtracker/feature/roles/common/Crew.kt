@@ -34,6 +34,8 @@ data class Coworker(
     val isStale: Boolean,
     /** Co robi kierowca; `null` – nie kierowca albo jeszcze nie wiadomo. */
     val trip: Trip? = null,
+    /** Ile minut stoi w miejscu; `null` – jedzie (albo stoi krótko, albo pozycja dawna). */
+    val standingMinutes: Int? = null,
 )
 
 /** @param withTrip ekran kierowcy – zamiast samego pola pokazuje, co kierowca robi */
@@ -65,6 +67,7 @@ internal fun coworkers(locations: List<LiveLocation>, fields: List<Field>, nowMi
                 fieldName = fields.firstOrNull { it.id == location.fieldId }?.name,
                 isStale = location.isStaleAt(nowMillis),
                 trip = location.trip.takeIf { location.role == Role.DRIVER },
+                standingMinutes = location.takeUnless { it.isStaleAt(nowMillis) }?.standingMinutesAt(nowMillis),
             )
         }
         .sortedBy { it.name }

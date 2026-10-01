@@ -5,6 +5,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import pl.farmtracker.app.BuildConfig
+import pl.farmtracker.app.demo.DemoLiveLocationRepository
 import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.base.DataStoreBaseRepository
 import pl.farmtracker.data.base.FirestoreBaseRepository
@@ -14,11 +15,13 @@ import pl.farmtracker.data.field.FirestoreFieldRepository
 import pl.farmtracker.data.location.FirestoreLiveLocationRepository
 import pl.farmtracker.data.location.LiveLocationRepository
 import pl.farmtracker.data.location.LocalLiveLocationRepository
+import pl.farmtracker.data.session.LocalPeopleRepository
+import pl.farmtracker.data.session.PeopleRepository
+import pl.farmtracker.data.session.SharedPeopleRepository
 import pl.farmtracker.data.time.Clock
-import pl.farmtracker.app.demo.DemoLiveLocationRepository
-import javax.inject.Singleton
 import javax.inject.Provider
 import javax.inject.Qualifier
+import javax.inject.Singleton
 
 /**
  * `true`: jest Firebase – logowanie numerem telefonu, wspólny zbiór, pola i baza w Firestore.
@@ -49,6 +52,13 @@ object StorageModule {
         firestore: Provider<FirestoreBaseRepository>,
         local: Provider<DataStoreBaseRepository>,
     ): BaseRepository = if (shared) firestore.get() else local.get()
+
+    @Provides
+    fun providePeopleRepository(
+        @SharedHarvest shared: Boolean,
+        sharedHarvest: Provider<SharedPeopleRepository>,
+        local: Provider<LocalPeopleRepository>,
+    ): PeopleRepository = if (shared) sharedHarvest.get() else local.get()
 
     @Provides
     @Singleton

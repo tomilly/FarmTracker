@@ -24,14 +24,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LocalShipping
-import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.Warehouse
-import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -226,7 +226,10 @@ private fun Coworker.tripText(): String? = when (trip) {
     Trip.ON_FIELD, null -> null
 }
 
-/** Gdzie są inni w danej roli, np. „Marek – na polu Za lasem"; nikt – „Sieczkarnia nie pracuje". */
+/**
+ * Gdzie są inni w danej roli, np. „Marek – na polu Za lasem", „Rysiek – na polu Za lasem, stoi od 7 min";
+ * nikt – „Sieczkarnia nie pracuje".
+ */
 @Composable
 internal fun CoworkerPills(role: Role, coworkers: List<Coworker>, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -244,8 +247,9 @@ internal fun CoworkerPills(role: Role, coworkers: List<Coworker>, modifier: Modi
                 coworker.fieldName != null -> stringResource(R.string.roles_coworker_on_field, coworker.fieldName)
                 else -> stringResource(R.string.roles_coworker_off_field)
             }
+            val status = coworker.standingMinutes?.let { stringResource(R.string.roles_coworker_standing, where, it) } ?: where
             StatusPill(
-                text = stringResource(R.string.roles_coworker, coworker.name, where),
+                text = stringResource(R.string.roles_coworker, coworker.name, status),
                 icon = RoleUi.icon(coworker.role),
                 tone = when {
                     coworker.isStale -> Tone.Neutral

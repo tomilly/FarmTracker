@@ -8,6 +8,7 @@ import pl.farmtracker.core.domain.geo.distanceMeters
  *
  * @param fieldId pole, na którym jest ta osoba – wykryte na jej telefonie ([fieldWith]); `null` – poza polami
  * @param trip co robi kierowca ([TripTracker]); `null` – nie wiadomo albo to nie kierowca
+ * @param stillSinceMillis od kiedy stoi w miejscu ([StillTracker]); `null` – nie wiadomo (starsza wersja aplikacji)
  * @param isMe pozycja tego telefonu
  */
 data class LiveLocation(
@@ -19,6 +20,7 @@ data class LiveLocation(
     val fieldId: String? = null,
     val trip: Trip? = null,
     val isMe: Boolean = false,
+    val stillSinceMillis: Long? = null,
 ) {
     /** Dawno bez nowej pozycji (brak zasięgu, wyłączony telefon) – pokazujemy ją z dopiskiem, na szaro. */
     fun isStaleAt(nowMillis: Long): Boolean = nowMillis - timeMillis > STALE_AFTER_MILLIS
@@ -26,9 +28,17 @@ data class LiveLocation(
     /** Pozycja sprzed ponad 2 godzin (telefon zgasł bez „Kończę pracę") – już jej nie pokazujemy. */
     fun isGoneAt(nowMillis: Long): Boolean = nowMillis - timeMillis > GONE_AFTER_MILLIS
 
+    /** Ile minut stoi w miejscu – `null`, gdy jedzie albo stoi krócej niż [STANDING_AFTER_MILLIS] (np. na skrzyżowaniu). */
+    fun standingMinutesAt(nowMillis: Long): Int? {
+        val since = stillSinceMillis ?: return null
+        val still = nowMillis - since
+        return if (still >= STANDING_AFTER_MILLIS) (still / 60_000L).toInt() else null
+    }
+
     companion object {
         const val STALE_AFTER_MILLIS = 3 * 60_000L
         const val GONE_AFTER_MILLIS = 2 * 60 * 60_000L
+        const val STANDING_AFTER_MILLIS = 5 * 60_000L
     }
 }
 
@@ -38,6 +48,7 @@ data class PositionReport(
     val fieldId: String?,
     val timeMillis: Long,
     val trip: Trip? = null,
+    val stillSinceMillis: Long? = null,
 ) {
     /**
      * Czy wysłać nową pozycję – nie przy każdym odczycie GPS (bateria, transfer): od razu przy zmianie pola

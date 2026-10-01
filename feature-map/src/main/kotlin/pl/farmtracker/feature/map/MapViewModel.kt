@@ -11,26 +11,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.Parcel
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.activeFieldIds
 import pl.farmtracker.core.domain.fieldAt
 import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.domain.geo.GeoPolygon
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapPerson
 import pl.farmtracker.core.map.toMapPeople
 import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.field.FieldRepository
 import pl.farmtracker.data.location.LiveLocationRepository
-import pl.farmtracker.data.time.Clock
-import pl.farmtracker.data.time.ticks
 import pl.farmtracker.data.parcel.ParcelLookup
 import pl.farmtracker.data.parcel.ParcelRepository
-import pl.farmtracker.data.session.SessionRepository
+import pl.farmtracker.data.session.PeopleRepository
+import pl.farmtracker.data.time.Clock
+import pl.farmtracker.data.time.ticks
 import javax.inject.Inject
 
 /** Co się dzieje z dotkniętą działką. */
@@ -48,7 +51,7 @@ val ParcelSelection.selectedParcel: Parcel? get() = (this as? ParcelSelection.Se
 class MapViewModel @Inject constructor(
     private val parcelRepository: ParcelRepository,
     fieldRepository: FieldRepository,
-    sessionRepository: SessionRepository,
+    peopleRepository: PeopleRepository,
     baseRepository: BaseRepository,
     liveLocationRepository: LiveLocationRepository,
     clock: Clock,
@@ -78,7 +81,7 @@ class MapViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** Pola zmienia tylko admin – pozostałe role widzą przy polu sam opis. */
-    val canEditFields: StateFlow<Boolean> = sessionRepository.currentRole
+    val canEditFields: StateFlow<Boolean> = peopleRepository.myRole
         .map { it == Role.ADMIN }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -99,6 +102,16 @@ class MapViewModel @Inject constructor(
             chrome.state.map { it.showParcels }.distinctUntilChanged().filter { !it }.collect {
                 clearParcelSelection()
             }
+        }
+        // Admin patrzy na całą pracę: na start wszystkie pola i baza na jednym widoku (zamiast „ja").
+        viewModelScope.launch {
+            if (peopleRepository.myRole.first { it != null } != Role.ADMIN) return@launch
+            // Bez pól (jeszcze żadnego nie narysowano) zostaje zwykły widok – mapa nie skacze potem sama.
+            val shapes = withTimeoutOrNull(FIELDS_WAIT_MILLIS) { fieldRepository.fields.first { it.isNotEmpty() } }
+                ?.flatMap { it.shape }
+                ?: return@launch
+            val base = baseRepository.base.first()?.location
+            chrome.showArea(shapes + listOfNotNull(base?.let { GeoPolygon(listOf(it)) }))
         }
     }
 
@@ -138,5 +151,10 @@ class MapViewModel @Inject constructor(
 
     fun clearFieldSelection() {
         selectedFieldId.value = null
+    }
+
+    private companion object {
+        /** Pola z serwera (albo z kopii na telefonie) – zwykle są od razu; dłużej nie czekamy z widokiem. */
+        const val FIELDS_WAIT_MILLIS = 5_000L
     }
 }

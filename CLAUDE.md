@@ -80,7 +80,10 @@ było widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`
 (`activeFieldIds`). Status kierowcy bez klikania: `core-domain/Trip.kt`
 (`TripTracker`: przy sieczkarni 2 pozycje ≤ 40 m → ładuje; przy bazie ≤ 150 m → w bazie (przed polem); zjechał z pola →
 wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
-wysyłany w `PositionReport.trip`.
+wysyłany w `PositionReport.trip`. „Stoi od N min" (≥ 5 min w promieniu 50 m): `core-domain/Still.kt` → `stillSince`.
+Admin: na górze podgląd pracy (`admin/AdminViewModel`: kto gdzie i co robi, kto stoi, kto nie pracuje), „Mapa"
+startuje od wszystkich pól i bazy. Rolę i ludzi zbioru ekrany biorą z `data/.../session/PeopleRepository`
+(wspólny zbiór albo telefon), nie z `SessionRepository` – ta ma tylko rolę wybraną na telefonie.
 Kamienie milowe: docs/BRIEF.md §9.
 
 ## Emulator (uwagi)

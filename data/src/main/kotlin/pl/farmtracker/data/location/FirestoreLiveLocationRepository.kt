@@ -30,7 +30,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Pozycje w zbiorze: `harvests/{id}/locations/{uid}` = `{name, role, lat, lon, time, fieldId, trip}` – jeden dokument
+ * Pozycje w zbiorze: `harvests/{id}/locations/{uid}` = `{name, role, lat, lon, time, fieldId, trip, stillSince}` – jeden dokument
  * na osobę, nadpisywany. Zapis nie czeka na serwer: bez zasięgu Firestore wyśle ostatnią pozycję później.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -69,6 +69,7 @@ class FirestoreLiveLocationRepository @Inject constructor(
                 TIME to report.timeMillis,
                 FIELD_ID to report.fieldId,
                 TRIP to report.trip?.name,
+                STILL_SINCE to report.stillSinceMillis,
             ),
         )
     }
@@ -97,6 +98,7 @@ class FirestoreLiveLocationRepository @Inject constructor(
             fieldId = getString(FIELD_ID),
             trip = getString(TRIP)?.let { stored -> Trip.entries.firstOrNull { it.name == stored } },
             isMe = id == myId,
+            stillSinceMillis = getLong(STILL_SINCE),
         )
     }
 
@@ -105,5 +107,6 @@ class FirestoreLiveLocationRepository @Inject constructor(
         const val TIME = "time"
         const val FIELD_ID = "fieldId"
         const val TRIP = "trip"
+        const val STILL_SINCE = "stillSince"
     }
 }

@@ -22,7 +22,19 @@ class LocalLiveLocationRepository @Inject constructor(
         if (report == null || role == null) {
             emptyList()
         } else {
-            listOf(LiveLocation(ME, name = "", role, report.point, report.timeMillis, report.fieldId, report.trip, isMe = true))
+            listOf(
+                LiveLocation(
+                    ME,
+                    name = "",
+                    role,
+                    report.point,
+                    report.timeMillis,
+                    report.fieldId,
+                    report.trip,
+                    isMe = true,
+                    stillSinceMillis = report.stillSinceMillis,
+                ),
+            )
         }
     }
 

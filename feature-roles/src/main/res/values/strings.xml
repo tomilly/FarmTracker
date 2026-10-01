@@ -33,6 +33,8 @@
     <string name="roles_coworker_to_base">wraca do bazy</string>
     <string name="roles_coworker_to_field">jedzie na pole</string>
     <string name="roles_coworker_at_base">w bazie</string>
+    <!-- np. „Marek – w bazie, stoi od 12 min" -->
+    <string name="roles_coworker_standing">%1$s, stoi od %2$d min</string>
 
     <string name="roles_open_map">Mapa</string>
 
@@ -46,4 +48,7 @@
     <string name="roles_admin_people">Ludzie</string>
     <string name="roles_admin_settings">Ustawienia</string>
     <string name="roles_admin_coming_soon">Ta funkcja będzie wkrótce.</string>
+    <string name="roles_admin_overview_title">Teraz w pracy</string>
+    <string name="roles_admin_not_working">Nie pracują: %1$s</string>
+    <string name="roles_admin_manage_title">Zbiór</string>
 </resources>
