@@ -23,8 +23,8 @@ android {
 
     defaultConfig {
         applicationId = "pl.farmtracker.app"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         buildConfigField("boolean", "SHARED_HARVEST", sharedHarvest.toString())
         buildConfigField("boolean", "DEMO", demo.toString())
         if (onlyAbi != null) ndk { abiFilters += onlyAbi }
