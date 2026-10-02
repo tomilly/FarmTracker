@@ -1,7 +1,6 @@
 package pl.farmtracker.core.testing
 
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import pl.farmtracker.data.auth.AuthRepository
 import pl.farmtracker.data.auth.AuthState
 import pl.farmtracker.data.auth.SendCodeResult
@@ -10,8 +9,7 @@ import pl.farmtracker.data.auth.VerifyCodeResult
 /** Logowanie na niby: [correctCode] loguje numerem z ostatniego [sendCode]. */
 class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthRepository {
 
-    private val _state = MutableStateFlow(initial)
-    override val state: StateFlow<AuthState> = _state
+    override val state = MutableStateFlow(initial)
 
     var sendResult: SendCodeResult = SendCodeResult.CodeSent
     var correctCode: String = "123456"
@@ -20,7 +18,7 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
 
     override suspend fun sendCode(phone: String): SendCodeResult {
         sentTo += phone
-        if (sendResult == SendCodeResult.SignedIn) _state.value = AuthState.SignedIn("user-$phone", phone)
+        if (sendResult == SendCodeResult.SignedIn) state.value = AuthState.SignedIn("user-$phone", phone)
         return sendResult
     }
 
@@ -28,11 +26,20 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
         verifyFailure?.let { return it }
         if (code != correctCode) return VerifyCodeResult.WrongCode
         val phone = sentTo.last()
-        _state.value = AuthState.SignedIn("user-$phone", phone)
+        state.value = AuthState.SignedIn("user-$phone", phone)
         return VerifyCodeResult.SignedIn
     }
 
+    /** `false` – udaje brak zasięgu przy zakładaniu konta do kodu. */
+    var inviteSignInWorks: Boolean = true
+
+    override suspend fun startWithInviteCode(): Boolean {
+        if (!inviteSignInWorks) return false
+        state.value = AuthState.SignedIn("invited", phone = "", withInviteCode = true)
+        return true
+    }
+
     override suspend fun signOut() {
-        _state.value = AuthState.SignedOut
+        state.value = AuthState.SignedOut
     }
 }

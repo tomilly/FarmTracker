@@ -6,9 +6,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.InviteCode
+import pl.farmtracker.data.auth.AuthRepository
+import pl.farmtracker.data.auth.AuthState
 import pl.farmtracker.data.harvest.HarvestRepository
 import pl.farmtracker.data.harvest.JoinResult
 import java.time.Year
@@ -26,23 +29,35 @@ data class OnboardingUiState(
     val harvestName: String = "",
     val busy: Boolean = false,
     val problem: OnboardingProblem? = null,
+    /** Konto z samego kodu zaproszenia – tylko kod: imię i rola są w zaproszeniu, zbioru się nie zakłada. */
+    val inviteOnly: Boolean = false,
 ) {
     val canContinue: Boolean get() = name.isNotBlank()
     val canCreate: Boolean get() = harvestName.isNotBlank() && !busy
 }
 
 /**
- * Pierwsze wejście po zalogowaniu, gdy osoba nie należy jeszcze do zbioru: imię, a potem kod
- * zaproszenia (większość ludzi) albo założenie zbioru (admin). Po dołączeniu aplikacja sama
- * przechodzi na ekran roli.
+ * Pierwsze wejście, gdy osoba nie należy jeszcze do zbioru. Po „Mam kod zaproszenia" (bez numeru) – od razu kod.
+ * Po logowaniu numerem: imię, a potem kod zaproszenia albo założenie zbioru (admin). Po dołączeniu aplikacja
+ * sama przechodzi na ekran roli.
  */
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val harvestRepository: HarvestRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState(harvestName = defaultHarvestName()))
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val auth = authRepository.state.first { it !is AuthState.Loading }
+            if (auth is AuthState.SignedIn && auth.withInviteCode) {
+                _uiState.update { it.copy(step = OnboardingStep.JOIN, inviteOnly = true) }
+            }
+        }
+    }
 
     fun onNameChanged(name: String) = _uiState.update { it.copy(name = name) }
 
@@ -50,7 +65,14 @@ class OnboardingViewModel @Inject constructor(
 
     fun startCreating() = moveTo(OnboardingStep.CREATE)
 
-    fun back() = _uiState.update { it.copy(step = OnboardingStep.CHOOSE, problem = null) }
+    /** Konto z samego kodu nie ma kroku wcześniej – wraca do pierwszego ekranu („Mam kod" / numer telefonu). */
+    fun back() {
+        if (_uiState.value.inviteOnly) {
+            viewModelScope.launch { authRepository.signOut() }
+        } else {
+            _uiState.update { it.copy(step = OnboardingStep.CHOOSE, problem = null) }
+        }
+    }
 
     private fun moveTo(step: OnboardingStep) = _uiState.update { if (it.canContinue) it.copy(step = step) else it }
 
@@ -65,7 +87,9 @@ class OnboardingViewModel @Inject constructor(
         if (_uiState.value.busy) return
         _uiState.update { it.copy(busy = true) }
         viewModelScope.launch {
-            val result = harvestRepository.join(code, _uiState.value.name.trim())
+            // Samym kodem – imię z zaproszenia (wpisał je admin).
+            val typed = _uiState.value
+            val result = harvestRepository.join(code, myName = if (typed.inviteOnly) null else typed.name.trim())
             _uiState.update { state ->
                 when (result) {
                     JoinResult.Joined -> state.copy(busy = false)

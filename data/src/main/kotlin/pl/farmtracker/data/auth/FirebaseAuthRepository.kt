@@ -9,11 +9,13 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import pl.farmtracker.data.firebase.CurrentActivity
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -35,7 +37,13 @@ class FirebaseAuthRepository @Inject constructor(
     override val state: Flow<AuthState> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
-            trySend(if (user == null) AuthState.SignedOut else AuthState.SignedIn(user.uid, user.phoneNumber.orEmpty()))
+            trySend(
+                if (user == null) {
+                    AuthState.SignedOut
+                } else {
+                    AuthState.SignedIn(user.uid, user.phoneNumber.orEmpty(), withInviteCode = user.isAnonymous)
+                },
+            )
         }
         auth.addAuthStateListener(listener)
         awaitClose { auth.removeAuthStateListener(listener) }
@@ -87,6 +95,16 @@ class FirebaseAuthRepository @Inject constructor(
         }
     }
 
+    override suspend fun startWithInviteCode(): Boolean = try {
+        withTimeout(SIGN_IN_TIMEOUT_MILLIS) { auth.signInAnonymously().await() }
+        true
+    } catch (error: FirebaseException) {
+        Log.w(TAG, "Nie utworzono konta do kodu zaproszenia", error)
+        false
+    } catch (error: TimeoutCancellationException) {
+        false
+    }
+
     override suspend fun signOut() {
         auth.signOut()
         verificationId = null
@@ -108,5 +126,8 @@ class FirebaseAuthRepository @Inject constructor(
 
         /** Jak długo telefon czeka na SMS, żeby odczytać go sam. */
         const val AUTO_RETRIEVAL_TIMEOUT_SECONDS = 60L
+
+        /** Konto do kodu wymaga serwera – bez zasięgu nie ma co czekać w nieskończoność. */
+        const val SIGN_IN_TIMEOUT_MILLIS = 15_000L
     }
 }

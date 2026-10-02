@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sms
@@ -41,7 +42,7 @@ import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.auth.R
 
-/** Logowanie numerem telefonu: numer → kod z SMS-a. Pierwszy ekran po instalacji. */
+/** Pierwszy ekran po instalacji: kod zaproszenia (większość ludzi) albo logowanie numerem → kod z SMS-a (admin). */
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
@@ -50,6 +51,9 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LoginContent(
         uiState = uiState,
+        onHaveInvite = viewModel::startWithInviteCode,
+        onUsePhone = viewModel::usePhoneNumber,
+        onBackToStart = viewModel::backToStart,
         onPhoneChanged = viewModel::onPhoneChanged,
         onSendCode = viewModel::sendCode,
         onCodeChanged = viewModel::onCodeChanged,
@@ -62,6 +66,9 @@ fun LoginScreen(
 @Composable
 internal fun LoginContent(
     uiState: LoginUiState,
+    onHaveInvite: () -> Unit,
+    onUsePhone: () -> Unit,
+    onBackToStart: () -> Unit,
     onPhoneChanged: (String) -> Unit,
     onSendCode: () -> Unit,
     onCodeChanged: (String) -> Unit,
@@ -73,16 +80,47 @@ internal fun LoginContent(
         title = stringResource(R.string.auth_title),
         icon = Icons.Filled.Phone,
         modifier = modifier,
-        onBack = if (uiState.step == LoginStep.CODE) onChangeNumber else null,
+        onBack = when (uiState.step) {
+            LoginStep.START -> null
+            LoginStep.PHONE -> onBackToStart
+            LoginStep.CODE -> onChangeNumber
+        },
     ) {
         when (uiState.step) {
-            LoginStep.PHONE -> PhoneStep(uiState, onPhoneChanged, onSendCode)
+            LoginStep.START -> StartStep(uiState, onHaveInvite, onUsePhone)
+            LoginStep.PHONE -> {
+                BackHandler(onBack = onBackToStart)
+                PhoneStep(uiState, onPhoneChanged, onSendCode)
+            }
             LoginStep.CODE -> {
                 BackHandler(onBack = onChangeNumber)
                 CodeStep(uiState, onCodeChanged, onResend, onChangeNumber)
             }
         }
     }
+}
+
+/** Zaproszeni nie podają numeru ani nie czekają na SMS – tylko kod; numer telefonu zostaje dla admina. */
+@Composable
+private fun StartStep(uiState: LoginUiState, onHaveInvite: () -> Unit, onUsePhone: () -> Unit) {
+    Text(stringResource(R.string.auth_welcome), style = MaterialTheme.typography.bodyLarge)
+    BigActionButton(
+        text = stringResource(R.string.auth_have_invite),
+        icon = Icons.Filled.Key,
+        onClick = onHaveInvite,
+        tone = Tone.Go,
+        enabled = !uiState.busy,
+    )
+    Problem(uiState.problem)
+    if (uiState.busy) StatusPill(text = stringResource(R.string.auth_starting), icon = Icons.Filled.HourglassTop)
+    Text(stringResource(R.string.auth_use_phone_note), style = MaterialTheme.typography.bodyLarge)
+    BigActionButton(
+        text = stringResource(R.string.auth_use_phone),
+        icon = Icons.Filled.Phone,
+        onClick = onUsePhone,
+        tone = Tone.Neutral,
+        enabled = !uiState.busy,
+    )
 }
 
 @Composable
@@ -165,11 +203,34 @@ private fun Problem(problem: LoginProblem?) {
                 LoginProblem.SERVICE_DOWN -> R.string.auth_service_down
                 LoginProblem.WRONG_CODE -> R.string.auth_wrong_code
                 LoginProblem.EXPIRED -> R.string.auth_expired
+                LoginProblem.INVITE_START_FAILED -> R.string.auth_invite_start_failed
             },
         ),
-        icon = if (problem == LoginProblem.UNAVAILABLE) Icons.Filled.CloudOff else Icons.Filled.Info,
+        icon = if (problem == LoginProblem.UNAVAILABLE || problem == LoginProblem.INVITE_START_FAILED) {
+            Icons.Filled.CloudOff
+        } else {
+            Icons.Filled.Info
+        },
         tone = Tone.Warning,
     )
+}
+
+@PreviewLightDark
+@Composable
+private fun LoginStartPreview() {
+    FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
+        LoginContent(
+            uiState = LoginUiState(),
+            onHaveInvite = {},
+            onUsePhone = {},
+            onBackToStart = {},
+            onPhoneChanged = {},
+            onSendCode = {},
+            onCodeChanged = {},
+            onResend = {},
+            onChangeNumber = {},
+        )
+    }
 }
 
 @PreviewLightDark
@@ -177,7 +238,10 @@ private fun Problem(problem: LoginProblem?) {
 private fun LoginPhonePreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         LoginContent(
-            uiState = LoginUiState(phone = "600 123 456"),
+            uiState = LoginUiState(step = LoginStep.PHONE, phone = "600 123 456"),
+            onHaveInvite = {},
+            onUsePhone = {},
+            onBackToStart = {},
             onPhoneChanged = {},
             onSendCode = {},
             onCodeChanged = {},
@@ -198,6 +262,9 @@ private fun LoginCodePreview() {
                 code = "123",
                 problem = LoginProblem.WRONG_CODE,
             ),
+            onHaveInvite = {},
+            onUsePhone = {},
+            onBackToStart = {},
             onPhoneChanged = {},
             onSendCode = {},
             onCodeChanged = {},

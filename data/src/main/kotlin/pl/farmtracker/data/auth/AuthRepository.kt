@@ -9,7 +9,8 @@ sealed interface AuthState {
 
     data object SignedOut : AuthState
 
-    data class SignedIn(val userId: String, val phone: String) : AuthState
+    /** @param withInviteCode konto z samego kodu zaproszenia (bez numeru) – tylko na tym telefonie */
+    data class SignedIn(val userId: String, val phone: String, val withInviteCode: Boolean = false) : AuthState
 }
 
 sealed interface SendCodeResult {
@@ -41,7 +42,10 @@ sealed interface VerifyCodeResult {
     data object Unavailable : VerifyCodeResult
 }
 
-/** Logowanie numerem telefonu kodem z SMS-a (BRIEF §5). */
+/**
+ * Logowanie numerem telefonu kodem z SMS-a (BRIEF §5) – admin; albo samym kodem zaproszenia ([startWithInviteCode]) –
+ * kierowcy, sieczkarnia, baza: bez SMS-a, konto zostaje na tym telefonie.
+ */
 interface AuthRepository {
     val state: Flow<AuthState>
 
@@ -49,6 +53,12 @@ interface AuthRepository {
     suspend fun sendCode(phone: String): SendCodeResult
 
     suspend fun verifyCode(code: String): VerifyCodeResult
+
+    /**
+     * Konto bez numeru – do wpisania kodu zaproszenia (reguły serwera wpuszczają tylko zalogowanych).
+     * @return `false` – brak zasięgu albo serwer odmówił
+     */
+    suspend fun startWithInviteCode(): Boolean
 
     suspend fun signOut()
 }

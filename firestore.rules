@@ -25,10 +25,18 @@ service cloud.firestore {
       return role in ['ADMIN', 'HARVESTER', 'DRIVER', 'BASE'];
     }
 
-    // Dołączenie kodem: zaproszenie istnieje, jest do tego zbioru, na tę rolę i jeszcze ważne.
+    // Dołączenie kodem: zaproszenie istnieje, jest do tego zbioru, na tę rolę i jeszcze ważne, a w tym samym zapisie
+    // zostaje zużyte (usunięte) – kod działa raz.
     function joinsWithInvite(harvestId, data) {
       let invite = get(/databases/$(database)/documents/invites/$(data.inviteCode)).data;
-      return invite.harvestId == harvestId && invite.role == data.role && invite.expiresAt > request.time;
+      return invite.harvestId == harvestId && invite.role == data.role && invite.expiresAt > request.time
+        && !existsAfter(/databases/$(database)/documents/invites/$(data.inviteCode));
+    }
+
+    // Kod zużywa ten, kto nim właśnie dołącza (jego karta w zbiorze powstaje w tym samym zapisie).
+    function usesInvite(harvestId, code) {
+      return signedIn()
+        && getAfter(/databases/$(database)/documents/harvests/$(harvestId)/members/$(request.auth.uid)).data.inviteCode == code;
     }
 
     // Do którego zbioru należę – tylko ja.
@@ -36,11 +44,14 @@ service cloud.firestore {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Zaproszenie czyta się po kodzie (bez listowania wszystkich); tworzy i kasuje admin.
+    // Zaproszenie konkretnej osoby: czyta się po kodzie (także z konta bez numeru – samym kodem); admin tworzy,
+    // widzi listę swoich i wycofuje; dołączający zużywa kod.
     match /invites/{code} {
       allow get: if signedIn();
-      allow create: if isAdmin(request.resource.data.harvestId) && validRole(request.resource.data.role);
-      allow delete: if isAdmin(resource.data.harvestId);
+      allow list: if isAdmin(resource.data.harvestId);
+      allow create: if isAdmin(request.resource.data.harvestId) && validRole(request.resource.data.role)
+        && request.resource.data.name is string && request.resource.data.name.size() > 0;
+      allow delete: if isAdmin(resource.data.harvestId) || usesInvite(resource.data.harvestId, code);
     }
 
     match /harvests/{harvestId} {

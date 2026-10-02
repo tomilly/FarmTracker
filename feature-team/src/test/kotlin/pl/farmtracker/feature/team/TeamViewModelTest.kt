@@ -54,26 +54,67 @@ class TeamViewModelTest {
             assertTrue(teamMember("u2").canRemove)
         }
 
-    @Test
-    fun `an invite for a role shows its code`() = runTest(mainDispatcherRule.testDispatcher) {
-        watch()
-
-        viewModel.invite(Role.HARVESTER)
-
-        val invite = (state.step as TeamStep.ShowInvite).invite
-        assertEquals(Role.HARVESTER, invite.role)
-        assertEquals(InviteCode("482913"), invite.code)
+    private fun inviteDriver(name: String, phone: String) {
+        viewModel.startInvite(Role.DRIVER)
+        viewModel.onInviteNameChanged(name)
+        viewModel.onInvitePhoneChanged(phone)
+        viewModel.createInvite()
     }
 
     @Test
-    fun `without signal the invite is not shown and the problem is`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `inviting a person - name and number, then the code to send by SMS`() = runTest(mainDispatcherRule.testDispatcher) {
+        watch()
+
+        inviteDriver(" Janek ", "600 000 003")
+
+        val invite = (state.step as TeamStep.ShowInvite).invite
+        assertEquals(Role.DRIVER, invite.role)
+        assertEquals(InviteCode("482913"), invite.code)
+        assertEquals("Janek", invite.name)
+        assertEquals("+48600000003", invite.phone)
+        assertEquals(listOf(invite), state.invites)
+    }
+
+    @Test
+    fun `a name is needed, the number can be left out but not mistyped`() = runTest(mainDispatcherRule.testDispatcher) {
+        watch()
+
+        viewModel.startInvite(Role.DRIVER)
+        assertFalse(state.draft.canCreate)
+
+        inviteDriver("Janek", "600 12")
+        assertTrue(state.draft.invalidPhone)
+        assertTrue(state.step is TeamStep.NewInvite)
+
+        viewModel.onInvitePhoneChanged("")
+        viewModel.createInvite()
+        assertEquals("", (state.step as TeamStep.ShowInvite).invite.phone)
+    }
+
+    @Test
+    fun `without signal the invite is not made and the problem is shown`() = runTest(mainDispatcherRule.testDispatcher) {
         watch()
         harvests.available = false
 
-        viewModel.invite(Role.DRIVER)
+        inviteDriver("Janek", "")
 
-        assertEquals(TeamStep.List, state.step)
+        assertTrue(state.step is TeamStep.NewInvite)
         assertTrue(state.inviteFailed)
+    }
+
+    @Test
+    fun `a pending invite can be opened again or withdrawn`() = runTest(mainDispatcherRule.testDispatcher) {
+        watch()
+        inviteDriver("Janek", "")
+        val invite = state.invites.single()
+        viewModel.backToList()
+
+        viewModel.openInvite(invite)
+        assertEquals(TeamStep.ShowInvite(invite), state.step)
+
+        viewModel.cancelInvite(invite)
+        assertEquals(TeamStep.List, state.step)
+        assertTrue(state.invites.isEmpty())
     }
 
     @Test

@@ -26,7 +26,8 @@ class FakeHarvestRepository(
     override val members: StateFlow<List<Member>> = _members
 
     var available = true
-    val invites = mutableListOf<Invite>()
+    private val _invites = MutableStateFlow<List<Invite>>(emptyList())
+    override val invites: StateFlow<List<Invite>> = _invites
     var nextCode = InviteCode("482913")
     var now = 0L
 
@@ -38,18 +39,30 @@ class FakeHarvestRepository(
         return true
     }
 
-    override suspend fun join(code: InviteCode, myName: String): JoinResult {
+    override suspend fun join(code: InviteCode, myName: String?): JoinResult {
         if (!available) return JoinResult.Unavailable
-        val invite = invites.firstOrNull { it.code == code && it.isValidAt(now) } ?: return JoinResult.InvalidCode
-        val member = me.copy(name = myName, role = invite.role)
+        val invite = _invites.value.firstOrNull { it.code == code && it.isValidAt(now) } ?: return JoinResult.InvalidCode
+        val member = me.copy(name = myName ?: invite.name, role = invite.role)
+        _invites.update { list -> list - invite }
         _members.update { it + member }
         _membership.value = Membership.Joined(Harvest(invite.harvestId, "Kukurydza"), member)
         return JoinResult.Joined
     }
 
-    override suspend fun createInvite(role: Role): Invite? {
+    override suspend fun createInvite(role: Role, name: String, phone: String): Invite? {
         if (!available) return null
-        return Invite(nextCode, "h-1", role, now + Invite.VALID_FOR_MILLIS).also { invites += it }
+        return Invite(nextCode, "h-1", role, now + Invite.VALID_FOR_MILLIS, name, phone).also { invite ->
+            _invites.update { listOf(invite) + it }
+        }
+    }
+
+    /** Zaproszenie wysłane wcześniej (np. z innego telefonu admina). */
+    fun addInvite(invite: Invite) {
+        _invites.update { it + invite }
+    }
+
+    override suspend fun cancelInvite(code: InviteCode) {
+        _invites.update { list -> list.filterNot { it.code == code } }
     }
 
     override suspend fun changeRole(userId: String, role: Role) {

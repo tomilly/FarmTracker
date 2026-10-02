@@ -8,7 +8,8 @@ data class Harvest(val id: String, val name: String)
 /**
  * Osoba w zbiorze. Jedna rola na zbiór (BRIEF §3).
  *
- * @param userId identyfikator z logowania numerem telefonu
+ * @param userId identyfikator konta: z logowania numerem telefonu albo z kodu zaproszenia (konto na tym telefonie)
+ * @param phone numer z logowania; przy dołączeniu kodem – numer, który admin wpisał w zaproszeniu (może być pusty)
  */
 data class Member(
     val userId: String,
@@ -22,14 +23,19 @@ fun List<Member>.canChangeOrRemove(member: Member): Boolean =
     member.role != Role.ADMIN || count { it.role == Role.ADMIN } > 1
 
 /**
- * Zaproszenie na konkretną rolę („Zaproś kierowcę"). Kod przepisuje się z SMS-a / WhatsAppa;
- * po wpisaniu osoba trafia od razu na ekran swojej roli.
+ * Zaproszenie konkretnej osoby na rolę („Zaproś kierowcę" → imię, numer). Kod przychodzi SMS-em; po wpisaniu
+ * osoba – bez logowania numerem i bez podawania imienia – trafia od razu na ekran swojej roli. Kod działa raz.
+ *
+ * @param name imię zaproszonego – tak go zobaczą inni
+ * @param phone numer, na który admin wysyła kod (może być pusty – kod podyktowany)
  */
 data class Invite(
     val code: InviteCode,
     val harvestId: String,
     val role: Role,
     val expiresAtMillis: Long,
+    val name: String = "",
+    val phone: String = "",
 ) {
     fun isValidAt(nowMillis: Long): Boolean = nowMillis < expiresAtMillis
 

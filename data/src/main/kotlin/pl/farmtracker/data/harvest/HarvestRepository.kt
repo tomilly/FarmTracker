@@ -39,10 +39,20 @@ interface HarvestRepository {
     /** Nowy zbiór; zakładający zostaje jego adminem. */
     suspend fun createHarvest(name: String, myName: String): Boolean
 
-    suspend fun join(code: InviteCode, myName: String): JoinResult
+    /**
+     * Dołączenie kodem – kod działa raz (zużywa się w tym samym zapisie).
+     * @param myName imię wpisane przy logowaniu numerem; `null` – imię z zaproszenia (dołączenie samym kodem)
+     */
+    suspend fun join(code: InviteCode, myName: String?): JoinResult
 
-    /** Nowe zaproszenie na rolę; `null`, gdy nie udało się go zapisać (brak zasięgu). */
-    suspend fun createInvite(role: Role): Invite?
+    /** Zaproszenia admina, na które jeszcze nikt nie dołączył (i ważne), najnowsze na górze. */
+    val invites: Flow<List<Invite>>
+
+    /** Nowe zaproszenie osoby na rolę; `null`, gdy nie udało się go zapisać (brak zasięgu). */
+    suspend fun createInvite(role: Role, name: String, phone: String): Invite?
+
+    /** Admin wycofuje zaproszenie – kod przestaje działać. */
+    suspend fun cancelInvite(code: InviteCode)
 
     suspend fun changeRole(userId: String, role: Role)
 

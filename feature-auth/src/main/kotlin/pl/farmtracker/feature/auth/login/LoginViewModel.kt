@@ -14,12 +14,23 @@ import pl.farmtracker.data.auth.SendCodeResult
 import pl.farmtracker.data.auth.VerifyCodeResult
 import javax.inject.Inject
 
-enum class LoginStep { PHONE, CODE }
+/** START – „Mam kod zaproszenia" albo logowanie numerem; PHONE → CODE – numer i kod z SMS-a (admin). */
+enum class LoginStep { START, PHONE, CODE }
 
-enum class LoginProblem { INVALID_NUMBER, TOO_MANY_ATTEMPTS, UNAVAILABLE, SERVICE_DOWN, WRONG_CODE, EXPIRED }
+enum class LoginProblem {
+    INVALID_NUMBER,
+    TOO_MANY_ATTEMPTS,
+    UNAVAILABLE,
+    SERVICE_DOWN,
+    WRONG_CODE,
+    EXPIRED,
+
+    /** Nie udało się przejść do wpisania kodu zaproszenia (brak zasięgu albo serwer odmówił). */
+    INVITE_START_FAILED,
+}
 
 data class LoginUiState(
-    val step: LoginStep = LoginStep.PHONE,
+    val step: LoginStep = LoginStep.START,
     val phone: String = "",
     /** Numer, na który poszedł SMS (już w formacie „+48…") – pokazujemy go przy wpisywaniu kodu. */
     val sentTo: String? = null,
@@ -31,8 +42,9 @@ data class LoginUiState(
 }
 
 /**
- * Logowanie: numer telefonu → kod z SMS-a. Kod sprawdza się sam po wpisaniu 6 cyfr – bez przycisku
- * „Zatwierdź". Po zalogowaniu aplikacja sama przechodzi dalej (obserwuje stan logowania).
+ * Pierwszy ekran. Zaproszeni (kierowcy, sieczkarnia, baza): „Mam kod zaproszenia" – bez numeru i SMS-a, dalej tylko
+ * kod. Admin: numer telefonu → kod z SMS-a; kod sprawdza się sam po wpisaniu 6 cyfr – bez przycisku „Zatwierdź".
+ * Po zalogowaniu aplikacja sama przechodzi dalej (obserwuje stan logowania).
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -41,6 +53,22 @@ class LoginViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    /** „Mam kod zaproszenia" – konto na tym telefonie; aplikacja przechodzi sama do wpisania kodu. */
+    fun startWithInviteCode() {
+        if (_uiState.value.busy) return
+        _uiState.update { it.copy(busy = true, problem = null) }
+        viewModelScope.launch {
+            val started = authRepository.startWithInviteCode()
+            _uiState.update { it.copy(busy = false, problem = if (started) null else LoginProblem.INVITE_START_FAILED) }
+        }
+    }
+
+    /** „Loguję się numerem telefonu" (admin). */
+    fun usePhoneNumber() = _uiState.update { it.copy(step = LoginStep.PHONE, problem = null) }
+
+    /** Wstecz z wpisywania numeru – do wyboru „kod zaproszenia / numer". */
+    fun backToStart() = _uiState.update { it.copy(step = LoginStep.START, problem = null) }
 
     fun onPhoneChanged(phone: String) = _uiState.update { it.copy(phone = phone, problem = null) }
 

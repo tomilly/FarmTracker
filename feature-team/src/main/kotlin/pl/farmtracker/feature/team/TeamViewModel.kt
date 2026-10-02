@@ -15,13 +15,17 @@ import pl.farmtracker.core.domain.Invite
 import pl.farmtracker.core.domain.Member
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.canChangeOrRemove
+import pl.farmtracker.core.domain.normalizePhoneNumber
 import pl.farmtracker.data.harvest.HarvestRepository
 import pl.farmtracker.data.harvest.Membership
 import javax.inject.Inject
 
-/** Co widać na ekranie „Ludzie": lista, świeże zaproszenie albo jedna osoba (rola, usunięcie). */
+/** Co widać na ekranie „Ludzie": lista, nowe zaproszenie (kto), gotowy kod albo jedna osoba (rola, usunięcie). */
 sealed interface TeamStep {
     data object List : TeamStep
+
+    /** Imię i numer zapraszanej osoby. */
+    data class NewInvite(val role: Role) : TeamStep
 
     data class ShowInvite(val invite: Invite) : TeamStep
 
@@ -38,12 +42,24 @@ data class TeamMember(
     val canRemove: Boolean get() = canChange && !isMe
 }
 
+/** Kogo admin zaprasza: imię (tak zobaczą go inni) i numer, na który pójdzie SMS z kodem (można pominąć). */
+data class InviteDraft(
+    val name: String = "",
+    val phone: String = "",
+    val invalidPhone: Boolean = false,
+) {
+    val canCreate: Boolean get() = name.isNotBlank()
+}
+
 data class TeamUiState(
     val step: TeamStep = TeamStep.List,
     val harvestName: String = "",
     val members: List<TeamMember> = emptyList(),
-    /** Czekamy na zapisanie zaproszenia (tej roli). */
-    val invitingRole: Role? = null,
+    /** Zaproszeni, którzy jeszcze nie wpisali kodu. */
+    val invites: List<Invite> = emptyList(),
+    val draft: InviteDraft = InviteDraft(),
+    /** Czekamy na zapisanie zaproszenia. */
+    val inviting: Boolean = false,
     val inviteFailed: Boolean = false,
 ) {
     val editedMember: TeamMember?
@@ -51,8 +67,8 @@ data class TeamUiState(
 }
 
 /**
- * Ekran admina „Ludzie": zaproszenia na rolę (kod do wysłania SMS-em / WhatsAppem), zmiana roli,
- * usunięcie ze zbioru – od razu, z „Cofnij" zamiast pytania „czy na pewno?".
+ * Ekran admina „Ludzie": zaproszenie konkretnej osoby (imię, numer → kod SMS-em; osoba wpisuje tylko kod),
+ * lista zaproszonych, zmiana roli, usunięcie ze zbioru – od razu, z „Cofnij" zamiast pytania „czy na pewno?".
  */
 @HiltViewModel
 class TeamViewModel @Inject constructor(
@@ -60,24 +76,26 @@ class TeamViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val step = MutableStateFlow<TeamStep>(TeamStep.List)
-    private val inviting = MutableStateFlow<Role?>(null)
+    private val draft = MutableStateFlow(InviteDraft())
+    private val inviting = MutableStateFlow(false)
     private val inviteFailed = MutableStateFlow(false)
 
-    val uiState: StateFlow<TeamUiState> = combine(
-        harvestRepository.membership,
-        harvestRepository.members,
-        step,
-        inviting,
-        inviteFailed,
-    ) { membership, members, step, inviting, failed ->
-        val joined = membership as? Membership.Joined
+    private val people = combine(harvestRepository.membership, harvestRepository.members, harvestRepository.invites) {
+            membership, members, invites ->
+        Triple(membership as? Membership.Joined, members, invites)
+    }
+
+    val uiState: StateFlow<TeamUiState> = combine(people, step, draft, inviting, inviteFailed) {
+            (joined, members, invites), step, draft, inviting, failed ->
         TeamUiState(
             step = step,
             harvestName = joined?.harvest?.name.orEmpty(),
             members = members
                 .sortedWith(compareBy({ it.role != Role.ADMIN }, { it.name }))
                 .map { TeamMember(it, isMe = it.userId == joined?.me?.userId, canChange = members.canChangeOrRemove(it)) },
-            invitingRole = inviting,
+            invites = invites,
+            draft = draft,
+            inviting = inviting,
             inviteFailed = failed,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TeamUiState())
@@ -87,15 +105,43 @@ class TeamViewModel @Inject constructor(
     /** Usunięta osoba – do „Cofnij" na liście. */
     val recentlyRemoved: StateFlow<Member?> = _recentlyRemoved.asStateFlow()
 
-    fun invite(role: Role) {
-        if (inviting.value != null) return
-        inviting.value = role
+    /** „Zaproś kierowcę" – najpierw kto: imię i numer. */
+    fun startInvite(role: Role) {
+        draft.value = InviteDraft()
+        inviteFailed.value = false
+        step.value = TeamStep.NewInvite(role)
+    }
+
+    fun onInviteNameChanged(name: String) = draft.update { it.copy(name = name) }
+
+    fun onInvitePhoneChanged(phone: String) = draft.update { it.copy(phone = phone, invalidPhone = false) }
+
+    fun createInvite() {
+        val role = (step.value as? TeamStep.NewInvite)?.role ?: return
+        val typed = draft.value
+        if (!typed.canCreate || inviting.value) return
+        // Numer można pominąć (kod podyktowany), ale wpisany musi być numerem – na niego pójdzie SMS.
+        val phone = if (typed.phone.isBlank()) "" else normalizePhoneNumber(typed.phone)
+        if (phone == null) {
+            draft.update { it.copy(invalidPhone = true) }
+            return
+        }
+        inviting.value = true
         inviteFailed.value = false
         viewModelScope.launch {
-            val invite = harvestRepository.createInvite(role)
-            inviting.value = null
+            val invite = harvestRepository.createInvite(role, typed.name.trim(), phone)
+            inviting.value = false
             if (invite == null) inviteFailed.value = true else step.value = TeamStep.ShowInvite(invite)
         }
+    }
+
+    /** Zaproszony jeszcze nie dołączył – kod jeszcze raz (np. wysłać ponownie). */
+    fun openInvite(invite: Invite) = step.update { TeamStep.ShowInvite(invite) }
+
+    /** Wycofanie zaproszenia – kod przestaje działać. */
+    fun cancelInvite(invite: Invite) {
+        step.value = TeamStep.List
+        viewModelScope.launch { harvestRepository.cancelInvite(invite.code) }
     }
 
     fun openMember(userId: String) = step.update { TeamStep.EditMember(userId) }

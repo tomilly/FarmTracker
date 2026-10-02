@@ -132,7 +132,7 @@ class FirestoreHarvestRepository @Inject constructor(
         }
     }
 
-    override suspend fun join(code: InviteCode, myName: String): JoinResult {
+    override suspend fun join(code: InviteCode, myName: String?): JoinResult {
         val user = auth.currentUser ?: return JoinResult.Unavailable
         // Zaproszenie musi przyjść z serwera – kopia na telefonie mogłaby być nieaktualna.
         val invite = try {
@@ -148,39 +148,77 @@ class FirestoreHarvestRepository @Inject constructor(
         if (harvestId == null || role == null || expiresAt == null || expiresAt.toDate().before(Date())) {
             return JoinResult.InvalidCode
         }
+        val name = myName?.takeIf { it.isNotBlank() } ?: invite.getString(NAME).orEmpty()
+        // Numer z logowania; przy samym kodzie – ten, na który admin wysłał zaproszenie (do kontaktu w „Ludzie").
+        val phone = user.phoneNumber?.takeIf { it.isNotBlank() } ?: invite.getString(PHONE)
         val batch = db.batch()
             .set(
                 harvestRef(harvestId).collection(MEMBERS).document(user.uid),
-                memberData(myName, user.phoneNumber, role) + (INVITE_CODE to code.digits),
+                memberData(name, phone, role) + (INVITE_CODE to code.digits),
             )
             .set(db.collection(USERS).document(user.uid), mapOf(HARVEST_ID to harvestId))
+            // Kod działa raz – zużywa się razem z dołączeniem (reguły serwera tego pilnują).
+            .delete(invite.reference)
         if (!commitOrQueue { batch.commit() }) return JoinResult.Unavailable
         reconnects.update { it + 1 }
         return JoinResult.Joined
     }
 
-    override suspend fun createInvite(role: Role): Invite? {
+    override val invites: Flow<List<Invite>> = membership.flatMapLatest { membership ->
+        if (membership !is Membership.Joined || membership.me.role != Role.ADMIN) {
+            flowOf(emptyList())
+        } else {
+            db.collection(INVITES).whereEqualTo(HARVEST_ID, membership.harvest.id).changes()
+                .map { snapshot ->
+                    val now = System.currentTimeMillis()
+                    snapshot.documents.mapNotNull { it.toInvite() }
+                        .filter { it.isValidAt(now) }
+                        .sortedByDescending { it.expiresAtMillis }
+                }
+                .retryWhenNotYetMember()
+                .catch { error -> if (error is FirebaseFirestoreException) emit(emptyList()) else throw error }
+        }
+    }
+
+    override suspend fun createInvite(role: Role, name: String, phone: String): Invite? {
         val harvestId = (membership.first() as? Membership.Joined)?.harvest?.id ?: return null
         val user = auth.currentUser ?: return null
-        val invite = Invite(InviteCode.random(), harvestId, role, System.currentTimeMillis() + Invite.VALID_FOR_MILLIS)
-        return try {
-            // Zaproszenie musi dotrzeć na serwer, zanim ktoś wpisze kod – dlatego tu czekamy.
-            withTimeout(SERVER_TIMEOUT_MS) {
-                db.collection(INVITES).document(invite.code.digits).set(
-                    mapOf(
-                        HARVEST_ID to harvestId,
-                        ROLE to role.name,
-                        EXPIRES_AT to Timestamp(Date(invite.expiresAtMillis)),
-                        CREATED_BY to user.uid,
-                    ),
-                ).await()
+        // Wylosowany kod może być już zajęty (reguły nie pozwalają nadpisać cudzego) – wtedy kolejny.
+        repeat(CODE_ATTEMPTS) {
+            val invite = Invite(
+                InviteCode.random(),
+                harvestId,
+                role,
+                System.currentTimeMillis() + Invite.VALID_FOR_MILLIS,
+                name,
+                phone,
+            )
+            try {
+                // Zaproszenie musi dotrzeć na serwer, zanim ktoś wpisze kod – dlatego tu czekamy.
+                withTimeout(SERVER_TIMEOUT_MS) {
+                    db.collection(INVITES).document(invite.code.digits).set(
+                        mapOf(
+                            HARVEST_ID to harvestId,
+                            ROLE to role.name,
+                            NAME to name,
+                            PHONE to phone,
+                            EXPIRES_AT to Timestamp(Date(invite.expiresAtMillis)),
+                            CREATED_BY to user.uid,
+                        ),
+                    ).await()
+                }
+                return invite
+            } catch (error: FirebaseFirestoreException) {
+                if (error.code != FirebaseFirestoreException.Code.PERMISSION_DENIED) return null
+            } catch (error: TimeoutCancellationException) {
+                return null
             }
-            invite
-        } catch (error: FirebaseFirestoreException) {
-            null
-        } catch (error: TimeoutCancellationException) {
-            null
         }
+        return null
+    }
+
+    override suspend fun cancelInvite(code: InviteCode) {
+        db.collection(INVITES).document(code.digits).delete()
     }
 
     override suspend fun changeRole(userId: String, role: Role) {
@@ -221,6 +259,18 @@ class FirestoreHarvestRepository @Inject constructor(
 
     private fun String.toRole(): Role? = Role.entries.firstOrNull { it.name == this }
 
+    private fun DocumentSnapshot.toInvite(): Invite? {
+        val code = InviteCode.parse(id) ?: return null
+        return Invite(
+            code = code,
+            harvestId = getString(HARVEST_ID) ?: return null,
+            role = getString(ROLE)?.toRole() ?: return null,
+            expiresAtMillis = getTimestamp(EXPIRES_AT)?.toDate()?.time ?: return null,
+            name = getString(NAME).orEmpty(),
+            phone = getString(PHONE).orEmpty(),
+        )
+    }
+
     companion object {
         const val USERS = "users"
         const val HARVESTS = "harvests"
@@ -241,5 +291,6 @@ class FirestoreHarvestRepository @Inject constructor(
         const val LON = "lon"
 
         private const val SERVER_TIMEOUT_MS = 15_000L
+        private const val CODE_ATTEMPTS = 3
     }
 }

@@ -8,19 +8,34 @@
     <string name="team_invite_base">Zaproś bazę</string>
     <string name="team_inviting">Tworzę zaproszenie…</string>
     <string name="team_invite_failed">Brak zasięgu – zaproszenie nie powstało. Spróbuj jeszcze raz.</string>
+    <string name="team_invites_section">Czekają na kod</string>
+    <string name="team_invite_pending">Kod %1$s</string>
     <string name="team_people_section">W zbiorze</string>
     <string name="team_me">%1$s (Ty)</string>
     <string name="team_removed">Usunięto: %1$s</string>
     <string name="team_undo">Cofnij</string>
 
+    <!-- Nowe zaproszenie: kto -->
+    <string name="team_invite_name_label">Imię</string>
+    <string name="team_invite_name_hint">np. Marek</string>
+    <string name="team_invite_name_why">Tak zobaczą go inni na mapie</string>
+    <string name="team_invite_phone_label">Numer telefonu</string>
+    <string name="team_invite_phone_hint">np. 600 123 456</string>
+    <string name="team_invite_phone_why">Wyślesz na niego SMS z kodem</string>
+    <string name="team_invite_invalid_phone">To nie wygląda na numer telefonu</string>
+    <string name="team_invite_create">Utwórz zaproszenie</string>
+
     <!-- Zaproszenie -->
     <string name="team_invite_title">Zaproszenie</string>
-    <string name="team_invite_for">Dla roli: %1$s</string>
+    <string name="team_invite_for">%1$s – %2$s</string>
     <string name="team_invite_code_label">Kod do wpisania w aplikacji:</string>
-    <string name="team_invite_valid">Kod działa przez 7 dni.</string>
+    <string name="team_invite_valid">Kod działa raz, przez 7 dni.</string>
+    <string name="team_invite_send_sms">Wyślij SMS: %1$s</string>
     <string name="team_invite_share">Wyślij SMS-em lub WhatsAppem</string>
-    <string name="team_invite_share_text">Zapraszam do zbioru „%1$s” w aplikacji FarmTracker jako: %2$s. Zaloguj się numerem telefonu i wpisz kod zaproszenia: %3$s</string>
+    <string name="team_invite_share_other">Wyślij inaczej (np. WhatsApp)</string>
+    <string name="team_invite_share_text">Cześć %1$s! Zapraszam do zbioru „%2$s” w aplikacji FarmTracker jako: %3$s. Otwórz aplikację, wybierz „Mam kod zaproszenia” i wpisz: %4$s</string>
     <string name="team_invite_done">Gotowe</string>
+    <string name="team_invite_cancel">Wycofaj zaproszenie</string>
 
     <!-- Osoba -->
     <string name="team_member_role">Rola</string>

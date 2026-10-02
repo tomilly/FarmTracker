@@ -23,6 +23,7 @@ class LoginViewModelTest {
     private val state get() = viewModel.uiState.value
 
     private fun sendTo(phone: String) {
+        viewModel.usePhoneNumber()
         viewModel.onPhoneChanged(phone)
         viewModel.sendCode()
     }
@@ -94,5 +95,34 @@ class LoginViewModelTest {
         assertEquals(LoginStep.PHONE, state.step)
         assertEquals("600123456", state.phone)
         assertNull(state.problem)
+    }
+
+    @Test
+    fun `first the choice - invite code or phone number, back from the number returns to it`() {
+        assertEquals(LoginStep.START, state.step)
+
+        viewModel.usePhoneNumber()
+        assertEquals(LoginStep.PHONE, state.step)
+
+        viewModel.backToStart()
+        assertEquals(LoginStep.START, state.step)
+    }
+
+    @Test
+    fun `I have an invite code - no number, no SMS, the app moves on by itself`() = runTest {
+        viewModel.startWithInviteCode()
+
+        assertTrue(auth.sentTo.isEmpty())
+        assertEquals(AuthState.SignedIn("invited", phone = "", withInviteCode = true), auth.state.first())
+    }
+
+    @Test
+    fun `I have an invite code without signal - say so, try again`() {
+        auth.inviteSignInWorks = false
+
+        viewModel.startWithInviteCode()
+
+        assertEquals(LoginProblem.INVITE_START_FAILED, state.problem)
+        assertEquals(AuthState.SignedOut, auth.state.value)
     }
 }

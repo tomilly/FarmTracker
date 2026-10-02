@@ -7,8 +7,10 @@ import org.junit.Test
 import pl.farmtracker.core.domain.Invite
 import pl.farmtracker.core.domain.InviteCode
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.testing.FakeAuthRepository
 import pl.farmtracker.core.testing.FakeHarvestRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
+import pl.farmtracker.data.auth.AuthState
 import pl.farmtracker.data.harvest.Membership
 
 class OnboardingViewModelTest {
@@ -17,7 +19,8 @@ class OnboardingViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val harvests = FakeHarvestRepository()
-    private val viewModel by lazy { OnboardingViewModel(harvests) }
+    private val auth = FakeAuthRepository(AuthState.SignedIn("u1", "+48600000002"))
+    private val viewModel by lazy { OnboardingViewModel(harvests, auth) }
     private val state get() = viewModel.uiState.value
     private val membership get() = harvests.membership.value
 
@@ -33,7 +36,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun `the sixth digit of an invite joins with the invited role and my name`() {
-        harvests.invites += Invite(InviteCode("482913"), "h-1", Role.DRIVER, expiresAtMillis = 1_000)
+        harvests.addInvite(Invite(InviteCode("482913"), "h-1", Role.DRIVER, expiresAtMillis = 1_000))
         viewModel.onNameChanged(" Marek ")
         viewModel.startJoining()
 
@@ -48,7 +51,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun `a wrong or expired code is cleared with an explanation`() {
-        harvests.invites += Invite(InviteCode("482913"), "h-1", Role.DRIVER, expiresAtMillis = 1_000)
+        harvests.addInvite(Invite(InviteCode("482913"), "h-1", Role.DRIVER, expiresAtMillis = 1_000))
         harvests.now = 2_000 // wygasło
         viewModel.onNameChanged("Marek")
         viewModel.startJoining()
@@ -61,7 +64,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun `without signal the typed code stays and can be retried`() {
-        harvests.invites += Invite(InviteCode("482913"), "h-1", Role.BASE, expiresAtMillis = 1_000)
+        harvests.addInvite(Invite(InviteCode("482913"), "h-1", Role.BASE, expiresAtMillis = 1_000))
         harvests.available = false
         viewModel.onNameChanged("Ania")
         viewModel.startJoining()
@@ -87,5 +90,30 @@ class OnboardingViewModelTest {
         val joined = membership as Membership.Joined
         assertEquals("Kukurydza u Tomka", joined.harvest.name)
         assertEquals(Role.ADMIN, joined.me.role)
+    }
+
+    @Test
+    fun `with only an invite code - straight to the code, name and role from the invite, used once`() {
+        auth.state.value = AuthState.SignedIn("invited", phone = "", withInviteCode = true)
+        harvests.addInvite(Invite(InviteCode("482913"), "h-1", Role.DRIVER, expiresAtMillis = 1_000, name = "Marek"))
+        assertEquals(OnboardingStep.JOIN, state.step)
+        assertTrue(state.inviteOnly)
+
+        viewModel.onCodeChanged("482913")
+
+        val me = (membership as Membership.Joined).me
+        assertEquals("Marek", me.name)
+        assertEquals(Role.DRIVER, me.role)
+        assertTrue(harvests.invites.value.isEmpty())
+    }
+
+    @Test
+    fun `with only an invite code, back returns to the first screen`() {
+        auth.state.value = AuthState.SignedIn("invited", phone = "", withInviteCode = true)
+        assertEquals(OnboardingStep.JOIN, state.step)
+
+        viewModel.back()
+
+        assertEquals(AuthState.SignedOut, auth.state.value)
     }
 }

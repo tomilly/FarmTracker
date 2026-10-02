@@ -18,6 +18,12 @@
     <string name="auth_service_down">Logowanie chwilowo nie działa – spróbuj później</string>
     <string name="auth_wrong_code">Zły kod – wpisz jeszcze raz</string>
     <string name="auth_expired">Kod wygasł – wyślij nowy</string>
+    <string name="auth_welcome">Dostałeś kod zaproszenia SMS-em? Wpisz go – nic więcej nie trzeba.</string>
+    <string name="auth_have_invite">Mam kod zaproszenia</string>
+    <string name="auth_use_phone">Loguję się numerem telefonu</string>
+    <string name="auth_use_phone_note">Numer telefonu – dla admina, który zakłada zbiór.</string>
+    <string name="auth_starting">Chwileczkę…</string>
+    <string name="auth_invite_start_failed">Nie udało się – sprawdź zasięg i spróbuj jeszcze raz</string>
 
     <!-- Pierwsze wejście: zbiór -->
     <string name="onboarding_title">Witaj!</string>

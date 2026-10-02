@@ -56,9 +56,11 @@ na głównej mapie dotknięcie pola pokazuje kartę pola (admin: „Edytuj pole"
 pola i wjazdy widoczne na mapie każdej roli. Baza (silos/pryzma): admin → „Baza" (`feature-fields/.../base`,
 zapis `data/.../base`), czarna kropka „Baza" na mapach.
 M3 gotowe (sprawdzone na 2 emulatorach z prawdziwym Firebase, numery testowe +48 600 000 001 admin / …002 kierowca):
-logowanie numerem (`feature-auth`: login, pierwsze wejście – imię, kod zaproszenia / nowy zbiór),
-admin „Ludzie" (`feature-team`: zaproszenia na rolę – 6 cyfr, 7 dni, wysyłka przez udostępnianie; rola, usuwanie
-z „Cofnij"). Firebase: `data/.../auth/FirebaseAuthRepository`, `data/.../harvest/FirestoreHarvestRepository`
+pierwszy ekran: „Mam kod zaproszenia" (konto anonimowe Firebase na tym telefonie, bez SMS-a – kierowcy, sieczkarnia,
+baza; potem tylko kod, imię i rola z zaproszenia) albo logowanie numerem (admin; SMS wymaga planu Blaze, na Spark –
+numery testowe); `feature-auth`: login, pierwsze wejście – imię, kod zaproszenia / nowy zbiór.
+Admin „Ludzie" (`feature-team`): zaproszenie konkretnej osoby – imię, numer → 6 cyfr, działa raz (zużywa się w zapisie
+dołączenia), 7 dni, „Wyślij SMS" na ten numer; lista „Czekają na kod" z wycofaniem; rola, usuwanie z „Cofnij". Firebase: `data/.../auth/FirebaseAuthRepository`, `data/.../harvest/FirestoreHarvestRepository`
 (`users/{uid}`, `harvests/{id}` + `members`, `fields`, `invites/{kod}`), pola/baza `Firestore*Repository`;
 reguły w `firestore.rules` (wkleja się w konsoli – po każdej zmianie pliku przypomnij o publikacji).
 Nasłuch Firestore tylko przez `data/.../firebase/Listen.kt` `changes()`, nie `snapshots()` (ten przy odmowie serwera
