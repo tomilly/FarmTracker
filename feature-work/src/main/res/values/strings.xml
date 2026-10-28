@@ -6,4 +6,7 @@
     <string name="work_notification_off_field">Poza polami</string>
     <string name="work_notification_searching">Szukam pozycji…</string>
     <string name="work_notification_stop">Kończę pracę</string>
+    <string name="work_moves_channel_name">Sieczkarnia zmienia pole</string>
+    <string name="work_moves_title">Sieczkarnia na nowym polu</string>
+    <string name="work_moves_text">%1$s – teraz na polu %2$s</string>
 </resources>

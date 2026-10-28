@@ -84,7 +84,10 @@ było widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`
 wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
 wysyłany w `PositionReport.trip`; z ładunkiem (ładował) przez inne pole dalej „wraca do bazy" aż do bazy.
 „Prowadź do pola: … / do bazy" u kierowcy (`common/DriveToButton`, cel z `core-domain/DriveTo.kt` wg statusu: ładuje,
-wraca albo już na polu sieczkarni → baza; inaczej wjazd najbliższy kierowcy na polu sieczkarni) → nawigacja Google Maps. „Stoi od N min" (≥ 5 min w promieniu 50 m): `core-domain/Still.kt` → `stillSince`.
+wraca albo już na polu sieczkarni → baza; inaczej wjazd najbliższy kierowcy na polu sieczkarni) → nawigacja Google Maps.
+Powiadomienie kierowcy „Sieczkarnia na nowym polu – Rysiek – teraz na polu …" (z dźwiękiem): liczone na telefonie
+w `WorkService` (`feature-work/HarvesterMoveWatch` + `core-domain/HarvesterMoves.kt`; start pracy i powrót na to samo
+pole to nie przejazd) – bez serwera/FCM. „Stoi od N min" (≥ 5 min w promieniu 50 m): `core-domain/Still.kt` → `stillSince`.
 Admin: na górze podgląd pracy (`admin/AdminViewModel`: kto gdzie i co robi, kto stoi, kto nie pracuje), „Mapa"
 startuje od wszystkich pól i bazy. „Sam też pracujesz?": „Pracuję jako sieczkarnia / kierowca" – rola na telefonie
 (`SessionRepository`) przykrywa rolę ze zbioru (w wersji na telefon tylko adminowi, `AppViewModel.workAs`); na ekranie roli

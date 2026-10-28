@@ -32,6 +32,7 @@ import javax.inject.Inject
 /**
  * Udostępnianie lokalizacji od „Zaczynam pracę" do „Kończę pracę" (CLAUDE.md): działa też przy zgaszonym
  * ekranie, a stałe powiadomienie pokazuje, że lokalizacja jest włączona, i pozwala skończyć pracę.
+ * Kierowcy dostają przy tym powiadomienie (z dźwiękiem), gdy sieczkarnia przejedzie na inne pole.
  * Kończy się samo, gdy [WorkRepository.isWorking] zmieni się na `false` – z ekranu roli albo z powiadomienia.
  */
 @AndroidEntryPoint
@@ -44,6 +45,8 @@ class WorkService : Service() {
     @Inject lateinit var locationSource: LocationSource
 
     @Inject lateinit var publisher: LocationPublisher
+
+    @Inject lateinit var harvesterMoveWatch: HarvesterMoveWatch
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var sharing: Job? = null
@@ -65,8 +68,10 @@ class WorkService : Service() {
 
     private suspend fun share() {
         val publishing = scope.launch { publisher.publish(locationSource.updates(), ::showField) }
+        val watchingHarvester = scope.launch { harvesterMoveWatch.notices().collect(::showHarvesterMove) }
         workRepository.isWorking.first { !it }
         publishing.cancel()
+        watchingHarvester.cancel()
         liveLocationRepository.stopSharing()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -93,15 +98,37 @@ class WorkService : Service() {
             ?: getString(R.string.work_notification_off_field)
         if (text == shownText) return
         shownText = text
-        val canNotify = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        if (canNotify) getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(text))
+        if (canNotify()) getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(text))
+    }
+
+    /** „Rysiek – teraz na polu Przy drodze" – z dźwiękiem, bo kierowca patrzy na drogę, nie na telefon. */
+    private fun showHarvesterMove(notice: HarvesterMoveNotice) {
+        if (!canNotify()) return
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(MOVES_CHANNEL_ID, getString(R.string.work_moves_channel_name), NotificationManager.IMPORTANCE_HIGH),
+        )
+        val moved = NotificationCompat.Builder(this, MOVES_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_work_notification)
+            .setContentTitle(getString(R.string.work_moves_title))
+            .setContentText(getString(R.string.work_moves_text, notice.harvesterName, notice.fieldName))
+            .setContentIntent(openAppIntent())
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .build()
+        // Jedno powiadomienie – nowy przejazd zastępuje stary.
+        manager.notify(MOVES_NOTIFICATION_ID, moved)
+    }
+
+    private fun canNotify(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    private fun openAppIntent(): PendingIntent? = packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
+        PendingIntent.getActivity(this, 0, launch, PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun notification(text: String): Notification {
-        val openApp = packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
-            PendingIntent.getActivity(this, 0, launch, PendingIntent.FLAG_IMMUTABLE)
-        }
+        val openApp = openAppIntent()
         // „Kończę pracę" nie kończy od razu (łatwo trafić przez przypadek) – otwiera aplikację z pytaniem „Skończyć pracę?".
         val askToStop = packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
             launch.setAction(ACTION_ASK_STOP)
@@ -129,6 +156,8 @@ class WorkService : Service() {
         private const val TAG = "FarmTrackerWork"
         private const val CHANNEL_ID = "work"
         private const val NOTIFICATION_ID = 1
+        private const val MOVES_CHANNEL_ID = "harvester-moves"
+        private const val MOVES_NOTIFICATION_ID = 2
 
         /** Otwarcie aplikacji z powiadomienia z pytaniem „Skończyć pracę?" (obsługuje `MainActivity`). */
         const val ACTION_ASK_STOP = "pl.farmtracker.work.ASK_STOP"
