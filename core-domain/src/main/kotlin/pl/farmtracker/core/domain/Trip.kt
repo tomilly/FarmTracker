@@ -38,6 +38,9 @@ class TripTracker {
     private var reference: GeoPoint? = null
     private var fixesNextToHarvester = 0
 
+    /** Pole, na którym kierowca ładował – do rozładunku w bazie (`null` – jedzie pusty albo nie wiadomo). */
+    private var loadedOnField: String? = null
+
     /**
      * @param fieldId pole pod kierowcą ([fieldWith])
      * @param harvesters świeże pozycje sieczkarni
@@ -53,12 +56,20 @@ class TripTracker {
             nextToHarvester && (trip == Trip.LOADING || fixesNextToHarvester >= FIXES_TO_START_LOADING) -> Trip.LOADING
             // Baza przed polem – silos bywa na skraju pola przy domu.
             base != null && point.distanceMeters(base) <= baseRadius -> Trip.AT_BASE
+            // Z ładunkiem przez inne pole (droga do bazy bywa skrajem pól) – dalej wraca do bazy.
+            loadedOnField != null && fieldId != null && fieldId != loadedOnField -> Trip.TO_BASE
             fieldId != null -> Trip.ON_FIELD
             trip == Trip.LOADING || trip == Trip.ON_FIELD -> Trip.TO_BASE
             trip == Trip.AT_BASE -> Trip.TO_FIELD
             else -> directionTo(base, point) ?: trip
         }
         if (next != trip) reference = point
+        loadedOnField = when (next) {
+            // Bez bazy nie ma gdzie się rozładować – ładunku nie pamiętamy.
+            Trip.LOADING -> fieldId.takeIf { base != null }
+            Trip.AT_BASE -> null
+            else -> loadedOnField
+        }
         trip = next
         return next
     }

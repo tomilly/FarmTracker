@@ -37,6 +37,8 @@
     <string name="roles_coworker_standing">%1$s, stoi od %2$d min</string>
 
     <string name="roles_open_map">Mapa</string>
+    <string name="roles_drive_to_field">Prowadź do pola: %1$s</string>
+    <string name="roles_drive_to_base">Prowadź do bazy</string>
 
     <!-- Kto gdzie jest -->
     <string name="roles_harvesters_title">Gdzie jest sieczkarnia</string>

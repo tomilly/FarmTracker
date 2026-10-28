@@ -12,7 +12,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pl.farmtracker.core.domain.DriveTo
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapOverlays
 import pl.farmtracker.core.ui.component.RoleScaffold
@@ -21,6 +23,7 @@ import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 import pl.farmtracker.feature.roles.common.Coworker
 import pl.farmtracker.feature.roles.common.CoworkerPills
+import pl.farmtracker.feature.roles.common.DriveToButton
 import pl.farmtracker.feature.roles.common.MyPosition
 import pl.farmtracker.feature.roles.common.MyPositionPills
 import pl.farmtracker.feature.roles.common.OpenMapButton
@@ -63,7 +66,7 @@ fun DriverScreen(
 
 /**
  * Kierowca w pracy: mapa na cały ekran, jedzie za nim (niebieska kropka „ja"), z sieczkarnią i innymi.
- * Na dole: gdzie jestem, gdzie sieczkarnia i mały „Kończę pracę".
+ * Na dole: gdzie jestem, gdzie sieczkarnia, „Prowadź do…" (nawigacja) i mały „Kończę pracę".
  */
 @Composable
 private fun DriverWorkMap(
@@ -77,6 +80,7 @@ private fun DriverWorkMap(
     WorkMap(role = Role.DRIVER, chrome = chrome, overlays = overlays, onSwitchRole = onSwitchRole, modifier = modifier) {
         MyPositionPills(uiState.position)
         CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
+        DriveToButton(uiState.driveTo)
         StopWorkButton(onStopWork = onStopWork)
     }
 }
@@ -113,6 +117,7 @@ internal fun DriverContent(
 
         Text(stringResource(R.string.roles_harvesters_title), style = MaterialTheme.typography.titleMedium)
         CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
+        DriveToButton(uiState.driveTo)
 
         OpenMapButton(onClick = onOpenMap)
     }
@@ -127,6 +132,7 @@ private fun DriverWorkingPreview() {
                 isWorking = true,
                 position = MyPosition.OffField,
                 harvesters = listOf(Coworker("Rysiek", Role.HARVESTER, fieldName = "Za lasem", isStale = false)),
+                driveTo = DriveTo.ToField("Za lasem", GeoPoint(50.0, 17.0)),
             ),
             onStartWork = {},
             onStopWork = {},

@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import pl.farmtracker.core.domain.DriveTo
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.domain.driveTo
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapOverlays
 import pl.farmtracker.data.base.BaseRepository
@@ -28,6 +30,8 @@ data class DriverUiState(
     val position: MyPosition = MyPosition.Searching,
     /** Gdzie są sieczkarnie – tam się jedzie po ładunek. */
     val harvesters: List<Coworker> = emptyList(),
+    /** „Prowadź do pola / do bazy" – cel z tego, co wykrył telefon; `null` – nie ma dokąd. */
+    val driveTo: DriveTo? = null,
 )
 
 /**
@@ -44,13 +48,15 @@ class DriverViewModel @Inject constructor(
     /** Mapa w czasie pracy. */
     val chrome = MapChromeController()
 
-    val uiState: StateFlow<DriverUiState> = combine(workRepository.isWorking, crewWatch.snapshot) { working, crew ->
-        DriverUiState(
-            isWorking = working,
-            position = myPosition(crew.locations, crew.fields, crew.nowMillis, withTrip = true),
-            harvesters = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.HARVESTER),
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DriverUiState())
+    val uiState: StateFlow<DriverUiState> =
+        combine(workRepository.isWorking, crewWatch.snapshot, baseRepository.base) { working, crew, base ->
+            DriverUiState(
+                isWorking = working,
+                position = myPosition(crew.locations, crew.fields, crew.nowMillis, withTrip = true),
+                harvesters = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.HARVESTER),
+                driveTo = driveTo(crew.locations, crew.fields, base?.location, crew.nowMillis),
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DriverUiState())
 
     /** Pola, wjazdy, baza i inni pracujący – na mapie w czasie pracy. */
     val overlays: StateFlow<MapOverlays> = combine(crewWatch.snapshot, baseRepository.base) { crew, base ->

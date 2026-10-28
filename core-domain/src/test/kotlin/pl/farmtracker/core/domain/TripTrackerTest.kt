@@ -79,4 +79,19 @@ class TripTrackerTest {
         // ~67 m od sieczkarni – dalej niż na początku ładowania, ale bliżej niż koniec.
         assertEquals(Trip.LOADING, onField(GeoPoint(50.0556, 17.0)))
     }
+
+    @Test
+    fun `with a load across another field - still back to the base, until unloading`() {
+        onField(besideHarvester)
+        onField(besideHarvester)
+        assertEquals(Trip.LOADING, tracker.trip)
+
+        assertEquals(Trip.ON_FIELD, onField(elsewhereOnField))
+        assertEquals(Trip.TO_BASE, tracker.update(road[2], fieldId = "f2", base = base, harvesters = listOf(harvester)))
+        assertEquals(Trip.AT_BASE, offField(atBase))
+
+        // Pusty – inne pole to znów tylko pole.
+        assertEquals(Trip.TO_FIELD, offField(road[1]))
+        assertEquals(Trip.ON_FIELD, tracker.update(road[2], fieldId = "f2", base = base, harvesters = listOf(harvester)))
+    }
 }

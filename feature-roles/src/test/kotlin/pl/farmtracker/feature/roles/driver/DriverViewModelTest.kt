@@ -8,9 +8,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import pl.farmtracker.core.domain.Base
+import pl.farmtracker.core.domain.DriveTo
 import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
+import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.map.CameraRequest
 import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakeWorkRepository
@@ -26,7 +29,8 @@ class DriverViewModelTest {
 
     private val crew = CrewFixture(myRole = Role.DRIVER)
     private val work = FakeWorkRepository()
-    private val viewModel by lazy { DriverViewModel(work, crew.watch, FakeBaseRepository()) }
+    private val base = Base(GeoPoint(49.95, 17.005))
+    private val viewModel by lazy { DriverViewModel(work, crew.watch, FakeBaseRepository(base)) }
     private val state get() = viewModel.uiState.value
 
     private fun driverTest(body: suspend TestScope.() -> Unit) = runTest(mainDispatcherRule.testDispatcher) {
@@ -112,5 +116,15 @@ class DriverViewModelTest {
             ),
             state.harvesters,
         )
+    }
+
+    @Test
+    fun `one button leads to the harvester field, and with a load back to the base`() = driverTest {
+        crew.locations.locations.value = listOf(crew.someone("Rysiek", Role.HARVESTER, crew.onTheField, fieldId = "f1"))
+        crew.locations.publish(PositionReport(crew.onTheRoad, null, crew.clock.now, Trip.TO_FIELD))
+        assertEquals(DriveTo.ToField("Za lasem", crew.onTheField), state.driveTo)
+
+        crew.locations.publish(PositionReport(crew.onTheField, "f1", crew.clock.now, Trip.LOADING))
+        assertEquals(DriveTo.ToBase(base.location), state.driveTo)
     }
 }
