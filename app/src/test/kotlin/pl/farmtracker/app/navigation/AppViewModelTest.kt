@@ -33,13 +33,26 @@ class AppViewModelTest {
         FakeHarvestRepository(),
         FakeWorkRepository(),
         sharedHarvest = false,
+        debugBuild = true,
     )
 
+    private val admin = Member("u1", "Tomek", "+48600000001", Role.ADMIN)
+    private val joinedAsAdmin = Membership.Joined(Harvest("h-1", "Kukurydza 2026"), admin)
+
+    /** @param debugBuild `false` – jak wersja na telefon (bez „Zmień rolę") */
     private fun shared(
         auth: AuthState,
         membership: Membership = Membership.None,
         session: FakeSessionRepository = FakeSessionRepository(),
-    ) = AppViewModel(session, FakeAuthRepository(auth), FakeHarvestRepository(initial = membership), work, sharedHarvest = true)
+        debugBuild: Boolean = true,
+    ) = AppViewModel(
+        session,
+        FakeAuthRepository(auth),
+        FakeHarvestRepository(initial = membership),
+        work,
+        sharedHarvest = true,
+        debugBuild = debugBuild,
+    )
 
     @Test
     fun `without firebase and without a role the role picker is shown`() = runTest {
@@ -145,6 +158,55 @@ class AppViewModelTest {
         viewModel.uiState.test {
             assertEquals(AppUiState.Ready(LoginDestination), awaitReady())
             assertEquals(null, session.currentRole.value)
+        }
+    }
+
+    @Test
+    fun `the admin works as a driver and comes back to the admin panel`() = runTest {
+        val session = FakeSessionRepository()
+        val viewModel = shared(signedIn, joinedAsAdmin, session, debugBuild = false)
+
+        viewModel.uiState.test {
+            assertEquals(AppUiState.Ready(AdminDestination), awaitReady())
+
+            viewModel.workAs(Role.DRIVER)
+            assertEquals(AppUiState.Ready(DriverDestination, backToAdmin = true), awaitReady())
+            assertEquals(Role.DRIVER, session.currentRole.value)
+
+            viewModel.backToAdmin()
+            assertEquals(AppUiState.Ready(AdminDestination), awaitReady())
+        }
+    }
+
+    @Test
+    fun `the admin works only as a harvester or a driver`() = runTest {
+        val session = FakeSessionRepository()
+        val viewModel = shared(signedIn, joinedAsAdmin, session, debugBuild = false)
+
+        viewModel.workAs(Role.BASE)
+
+        assertEquals(null, session.currentRole.value)
+    }
+
+    @Test
+    fun `on the phone a role set on the phone does not cover the role of a non-admin`() = runTest {
+        val session = FakeSessionRepository(initialRole = Role.HARVESTER)
+        val viewModel = shared(signedIn, joinedAsDriver, session, debugBuild = false)
+
+        viewModel.uiState.test {
+            assertEquals(AppUiState.Ready(DriverDestination), awaitReady())
+            assertEquals(null, session.currentRole.value)
+        }
+    }
+
+    @Test
+    fun `an admin working as a harvester stays one after the app restarts`() = runTest {
+        val session = FakeSessionRepository(initialRole = Role.HARVESTER)
+        val viewModel = shared(signedIn, joinedAsAdmin, session, debugBuild = false)
+
+        viewModel.uiState.test {
+            assertEquals(AppUiState.Ready(HarvesterDestination, backToAdmin = true), awaitReady())
+            assertEquals(Role.HARVESTER, session.currentRole.value)
         }
     }
 }

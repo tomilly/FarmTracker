@@ -33,6 +33,8 @@ fun DriverScreen(
     onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Admin, który sam pracuje – „Admin" wraca do panelu (gdy nie pracuje; w pracy najpierw „Kończę pracę"). */
+    onBackToAdmin: (() -> Unit)? = null,
     viewModel: DriverViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -53,6 +55,7 @@ fun DriverScreen(
             onStopWork = viewModel::stopWork,
             onOpenMap = onOpenMap,
             onSwitchRole = onSwitchRole,
+            onBackToAdmin = onBackToAdmin,
             modifier = modifier,
         )
     }
@@ -87,11 +90,13 @@ internal fun DriverContent(
     onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onBackToAdmin: (() -> Unit)? = null,
 ) {
     // W pracy kierowca widzi mapę ([DriverWorkMap]); tu – przed pracą (i w podglądach).
     RoleScaffold(
         role = Role.DRIVER,
         onSwitchRole = onSwitchRole,
+        onBackToAdmin = onBackToAdmin?.takeUnless { uiState.isWorking },
         modifier = modifier,
         bottomAction = if (uiState.isWorking) {
             { StopWorkButton(onStopWork = onStopWork) }

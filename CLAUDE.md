@@ -66,7 +66,7 @@ reguły w `firestore.rules` (wkleja się w konsoli – po każdej zmianie pliku 
 Nasłuch Firestore tylko przez `data/.../firebase/Listen.kt` `changes()`, nie `snapshots()` (ten przy odmowie serwera
 kończy się CancellationException i ekran po cichu przestaje się odświeżać); dane zbioru z `retryWhenNotYetMember()`. Tryb zależy od `app/google-services.json` (nie w repo – repo
 publiczne): jest → `BuildConfig.SHARED_HARVEST` i wspólny zbiór; brak → jak przed M3 (wybór roli, dane lokalne).
-Wybór w `app/.../di/StorageModule`. W debug „Zmień rolę" przykrywa rolę ze zbioru tylko na tym telefonie.
+Wybór w `app/.../di/StorageModule`. W debug „Zmień rolę" przykrywa rolę ze zbioru tylko na tym telefonie (`@DebugBuild`).
 `-Pfarmtracker.localOnly` buduje wersję lokalną mimo pliku (próby na emulatorze bez logowania); `-Pfarmtracker.demo` – lokalna
 z udawaną sieczkarnią „Rysiek" (`app/.../demo`). Admin → „Ustawienia" (`feature-auth/settings`): konto i „Wyloguj się"
 (kończy pracę, zdejmuje pozycję, potem wylogowuje).
@@ -84,7 +84,9 @@ było widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`
 wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
 wysyłany w `PositionReport.trip`. „Stoi od N min" (≥ 5 min w promieniu 50 m): `core-domain/Still.kt` → `stillSince`.
 Admin: na górze podgląd pracy (`admin/AdminViewModel`: kto gdzie i co robi, kto stoi, kto nie pracuje), „Mapa"
-startuje od wszystkich pól i bazy. Rolę i ludzi zbioru ekrany biorą z `data/.../session/PeopleRepository`
+startuje od wszystkich pól i bazy. „Sam też pracujesz?": „Pracuję jako sieczkarnia / kierowca" – rola na telefonie
+(`SessionRepository`) przykrywa rolę ze zbioru (w wersji na telefon tylko adminowi, `AppViewModel.workAs`); na ekranie roli
+„Admin" w pasku wraca do panelu (ukryte w czasie pracy). Rolę i ludzi zbioru ekrany biorą z `data/.../session/PeopleRepository`
 (wspólny zbiór albo telefon), nie z `SessionRepository` – ta ma tylko rolę wybraną na telefonie.
 Kamienie milowe: docs/BRIEF.md §9.
 

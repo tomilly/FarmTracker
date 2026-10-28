@@ -140,6 +140,7 @@ fun FarmTrackerScaffold(
  * Ekran roli: w pasku zawsze widać, kim jestem (ikona + nazwa roli) – test „trunk test" (BRIEF §4).
  *
  * @param onSwitchRole gdy nie `null`, w pasku pojawia się „Zmień rolę" (tymczasowo, tylko w wersji debug).
+ * @param onBackToAdmin gdy nie `null`, w pasku „Admin" – admin, który sam pracuje, wraca do swojego panelu
  * @param bottomAction przycisk przyklejony do dołu ekranu (np. „Kończę pracę") – z dala od głównych przycisków
  */
 @Composable
@@ -147,6 +148,7 @@ fun RoleScaffold(
     role: Role,
     modifier: Modifier = Modifier,
     onSwitchRole: (() -> Unit)? = null,
+    onBackToAdmin: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
@@ -157,9 +159,28 @@ fun RoleScaffold(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomAction = bottomAction,
-        actions = { if (onSwitchRole != null) SwitchRoleButton(onClick = onSwitchRole) },
+        actions = {
+            when {
+                onBackToAdmin != null -> BackToAdminButton(onClick = onBackToAdmin)
+                onSwitchRole != null -> SwitchRoleButton(onClick = onSwitchRole)
+            }
+        },
         content = content,
     )
+}
+
+/** „Admin" w górnym pasku ekranu sieczkarni / kierowcy – admin, który sam pracował, wraca do panelu. */
+@Composable
+fun BackToAdminButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
+    ) {
+        Icon(RoleUi.icon(Role.ADMIN), contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(RoleUi.labelRes(Role.ADMIN)), style = MaterialTheme.typography.labelMedium)
+    }
 }
 
 /** „Zmień rolę" w górnym pasku (tymczasowo, tylko w wersji debug) – także na ekranach ról z mapą. */

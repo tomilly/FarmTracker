@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import pl.farmtracker.app.BuildConfig
+import pl.farmtracker.core.domain.Role
 import pl.farmtracker.feature.auth.login.LoginScreen
 import pl.farmtracker.feature.auth.onboarding.OnboardingScreen
 import pl.farmtracker.feature.auth.settings.SettingsScreen
@@ -44,6 +45,8 @@ fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
         is AppUiState.Ready -> FarmTrackerNavHost(
             destination = state.destination,
             onSwitchRole = if (BuildConfig.DEBUG) viewModel::switchRole else null,
+            onWorkAs = viewModel::workAs,
+            onBackToAdmin = if (state.backToAdmin) viewModel::backToAdmin else null,
             // „Ludzie" i „Ustawienia" (konto) działają tylko ze wspólnym zbiorem – bez Firebase zostają „wkrótce".
             peopleEnabled = BuildConfig.SHARED_HARVEST,
         )
@@ -54,6 +57,8 @@ fun FarmTrackerApp(viewModel: AppViewModel = hiltViewModel()) {
 private fun FarmTrackerNavHost(
     destination: AppDestination,
     onSwitchRole: (() -> Unit)?,
+    onWorkAs: (Role) -> Unit,
+    onBackToAdmin: (() -> Unit)?,
     peopleEnabled: Boolean,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -75,12 +80,17 @@ private fun FarmTrackerNavHost(
         composable<LoginDestination> { LoginScreen() }
         composable<OnboardingDestination> { OnboardingScreen() }
         composable<RolePickerDestination> { RolePickerScreen() }
-        composable<HarvesterDestination> { HarvesterScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
-        composable<DriverDestination> { DriverScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
+        composable<HarvesterDestination> {
+            HarvesterScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole, onBackToAdmin = onBackToAdmin)
+        }
+        composable<DriverDestination> {
+            DriverScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole, onBackToAdmin = onBackToAdmin)
+        }
         composable<BaseDestination> { BaseScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
         composable<AdminDestination> {
             AdminScreen(
                 onOpenMap = openMap,
+                onWorkAs = onWorkAs,
                 onOpenFields = { navController.navigate(FieldsListDestination) { launchSingleTop = true } },
                 onOpenBase = { navController.navigate(BaseSetupDestination) { launchSingleTop = true } },
                 onOpenPeople = openPeople,

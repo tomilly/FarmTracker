@@ -51,4 +51,7 @@
     <string name="roles_admin_overview_title">Teraz w pracy</string>
     <string name="roles_admin_not_working">Nie pracują: %1$s</string>
     <string name="roles_admin_manage_title">Zbiór</string>
+    <string name="roles_admin_work_title">Sam też pracujesz?</string>
+    <string name="roles_admin_work_as_harvester">Pracuję jako sieczkarnia</string>
+    <string name="roles_admin_work_as_driver">Pracuję jako kierowca</string>
 </resources>

@@ -31,6 +31,8 @@ fun HarvesterScreen(
     onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Admin, który sam pracuje – „Admin" wraca do panelu (gdy nie pracuje; w pracy najpierw „Kończę pracę"). */
+    onBackToAdmin: (() -> Unit)? = null,
     viewModel: HarvesterViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -55,6 +57,7 @@ fun HarvesterScreen(
             onStopWork = viewModel::stopWork,
             onOpenMap = onOpenMap,
             onSwitchRole = onSwitchRole,
+            onBackToAdmin = onBackToAdmin,
             modifier = modifier,
         )
     }
@@ -69,10 +72,12 @@ internal fun HarvesterContent(
     onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onBackToAdmin: (() -> Unit)? = null,
 ) {
     RoleScaffold(
         role = Role.HARVESTER,
         onSwitchRole = onSwitchRole,
+        onBackToAdmin = onBackToAdmin?.takeUnless { uiState.isWorking },
         modifier = modifier,
         bottomAction = if (uiState.isWorking) {
             { StopWorkButton(onStopWork = onStopWork) }

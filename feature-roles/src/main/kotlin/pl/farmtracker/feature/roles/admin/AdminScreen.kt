@@ -22,9 +22,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
+import pl.farmtracker.core.ui.RoleUi
 import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.RoleScaffold
 import pl.farmtracker.core.ui.component.StatusPill
+import pl.farmtracker.core.ui.component.Tone
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 import pl.farmtracker.feature.roles.common.Coworker
@@ -33,12 +35,14 @@ import pl.farmtracker.feature.roles.common.OpenMapButton
 
 /**
  * Admin: na górze podgląd pracy – kto gdzie jest i co robi (ładuje, wraca do bazy, stoi od…), kto nie pracuje,
- * „Mapa" ze wszystkimi polami. Pod spodem płaskie menu zbioru (BRIEF §4): „Pola" i „Baza" – miejsca zbioru;
+ * „Mapa" ze wszystkimi polami. W małym gospodarstwie admin często sam jedzie – „Pracuję jako sieczkarnia / kierowca". Pod spodem płaskie menu zbioru (BRIEF §4): „Pola" i „Baza" – miejsca zbioru;
  * „Ludzie" – zaproszenia i role (feature-team); „Ustawienia" – konto i wylogowanie (feature-auth).
  */
 @Composable
 fun AdminScreen(
     onOpenMap: () -> Unit,
+    /** Admin sam pracuje – ekran tej roli („Zaczynam pracę"); inni widzą go jako sieczkarnię / kierowcę. */
+    onWorkAs: (Role) -> Unit,
     onOpenFields: () -> Unit,
     onOpenBase: () -> Unit,
     /** `null` – „Ludzie" jeszcze niedostępne (bez wspólnego zbioru): pokazujemy „wkrótce". */
@@ -53,6 +57,7 @@ fun AdminScreen(
     AdminContent(
         uiState = uiState,
         onOpenMap = onOpenMap,
+        onWorkAs = onWorkAs,
         onOpenFields = onOpenFields,
         onOpenBase = onOpenBase,
         onOpenPeople = onOpenPeople,
@@ -66,6 +71,7 @@ fun AdminScreen(
 internal fun AdminContent(
     uiState: AdminUiState,
     onOpenMap: () -> Unit,
+    onWorkAs: (Role) -> Unit,
     onOpenFields: () -> Unit,
     onOpenBase: () -> Unit,
     onOpenPeople: (() -> Unit)?,
@@ -94,6 +100,20 @@ internal fun AdminContent(
             )
         }
         OpenMapButton(onClick = onOpenMap)
+
+        Text(stringResource(R.string.roles_admin_work_title), style = MaterialTheme.typography.titleMedium)
+        BigActionButton(
+            text = stringResource(R.string.roles_admin_work_as_harvester),
+            icon = RoleUi.icon(Role.HARVESTER),
+            onClick = { onWorkAs(Role.HARVESTER) },
+            tone = Tone.Go,
+        )
+        BigActionButton(
+            text = stringResource(R.string.roles_admin_work_as_driver),
+            icon = RoleUi.icon(Role.DRIVER),
+            onClick = { onWorkAs(Role.DRIVER) },
+            tone = Tone.Go,
+        )
 
         Text(stringResource(R.string.roles_admin_manage_title), style = MaterialTheme.typography.titleMedium)
         BigActionButton(
@@ -136,6 +156,7 @@ private fun AdminScreenPreview() {
                 notWorking = listOf("Staszek"),
             ),
             onOpenMap = {},
+            onWorkAs = {},
             onOpenFields = {},
             onOpenBase = {},
             onOpenPeople = {},

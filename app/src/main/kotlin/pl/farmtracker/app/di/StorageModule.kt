@@ -31,9 +31,19 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class SharedHarvest
 
+/** `true` w wersji testowej (debug) – np. „Zmień rolę" na dowolną rolę. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DebugBuild
+
 @Module
 @InstallIn(SingletonComponent::class)
 object StorageModule {
+
+    @Provides
+    @DebugBuild
+    fun provideDebugBuild(): Boolean = BuildConfig.DEBUG
+
 
     @Provides
     @SharedHarvest
