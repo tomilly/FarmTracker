@@ -67,7 +67,7 @@ class WorkService : Service() {
     }
 
     private suspend fun share() {
-        val publishing = scope.launch { publisher.publish(locationSource.updates(), ::showField) }
+        val publishing = scope.launch { publisher.publish(locationSource.updates(publisher.pace), ::showField) }
         val watchingHarvester = scope.launch { harvesterMoveWatch.notices().collect(::showHarvesterMove) }
         workRepository.isWorking.first { !it }
         publishing.cancel()

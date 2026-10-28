@@ -2,12 +2,16 @@ package pl.farmtracker.feature.work
 
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.withIndex
 import pl.farmtracker.core.domain.Field
+import pl.farmtracker.core.domain.GpsPace
 import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.PositionReport
 import pl.farmtracker.core.domain.Role
@@ -32,6 +36,11 @@ class LocationPublisher @Inject constructor(
     private val clock: Clock,
 ) {
 
+    private val _pace = MutableStateFlow(GpsPace.FAST)
+
+    /** Jak często pytać GPS – z tego, od kiedy telefon stoi ([GpsPace]); źródło pozycji idzie za tym od razu. */
+    val pace: StateFlow<GpsPace> = _pace.asStateFlow()
+
     /**
      * Działa do przerwania (koniec pracy). Po zmianie pól (admin dorysował pole) sprawdza ostatnią pozycję jeszcze raz.
      *
@@ -55,6 +64,7 @@ class LocationPublisher @Inject constructor(
             val trip = if (fix.index != lastFixIndex) {
                 lastFixIndex = fix.index
                 stillSince = stillTracker.update(point, now)
+                _pace.value = GpsPace.forStillSince(stillSince, now)
                 tripTracker.update(point, field?.id, base.value, others.value.freshHarvesters(now))
             } else {
                 tripTracker.trip

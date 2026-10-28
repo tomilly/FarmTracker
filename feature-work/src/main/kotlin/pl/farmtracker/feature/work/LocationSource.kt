@@ -10,29 +10,38 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import pl.farmtracker.core.domain.GpsPace
 import pl.farmtracker.core.domain.geo.GeoPoint
 import javax.inject.Inject
 
-/** Odczyty GPS tego telefonu. */
+/** Odczyty GPS tego telefonu – tak często, jak każe [GpsPace] (zmiana tempa przestawia GPS od razu). */
 fun interface LocationSource {
-    fun updates(): Flow<GeoPoint>
+    fun updates(pace: Flow<GpsPace>): Flow<GeoPoint>
 }
 
 /**
- * Pozycja z usług Google (GPS + sieć). Co [INTERVAL_MILLIS] – częściej nie ma sensu, bo i tak wysyłamy
- * rzadziej ([pl.farmtracker.core.domain.PositionReport.needsUpdate]).
+ * Pozycja z usług Google (GPS + sieć). W ruchu co 5 s – częściej nie ma sensu, bo i tak wysyłamy rzadziej
+ * ([pl.farmtracker.core.domain.PositionReport.needsUpdate]); na postoju co 30 s – oszczędza baterię.
  */
 class FusedLocationSource @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : LocationSource {
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun updates(pace: Flow<GpsPace>): Flow<GeoPoint> =
+        pace.distinctUntilChanged().flatMapLatest { updatesEvery(it.intervalMillis) }
+
     // WorkService startuje tylko ze zgodą na lokalizację.
     @SuppressLint("MissingPermission")
-    override fun updates(): Flow<GeoPoint> = callbackFlow {
+    private fun updatesEvery(intervalMillis: Long): Flow<GeoPoint> = callbackFlow {
         val client = LocationServices.getFusedLocationProviderClient(context)
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVAL_MILLIS)
+        // Dokładność zawsze wysoka – na postoju tylko rzadziej (zgrubna pozycja z sieci wskazałaby złe pole).
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMillis)
             .setMinUpdateIntervalMillis(MIN_INTERVAL_MILLIS)
             .build()
         val callback = object : LocationCallback() {
@@ -48,7 +57,6 @@ class FusedLocationSource @Inject constructor(
     }
 
     private companion object {
-        const val INTERVAL_MILLIS = 5_000L
         const val MIN_INTERVAL_MILLIS = 2_000L
         const val MAX_ACCURACY_METERS = 75f
     }

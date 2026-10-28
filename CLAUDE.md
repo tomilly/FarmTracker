@@ -73,7 +73,8 @@ z udawaną sieczkarnią „Rysiek" (`app/.../demo`). Admin → „Ustawienia" (`
 M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokalizację i powiadomienie, ustawia
 `WorkRepository.isWorking`; `MainActivity` (gdy na wierzchu) włącza `feature-work/WorkService` (usługa pierwszoplanowa
 „location", stałe powiadomienie z polem i „Kończę pracę" – otwiera aplikację z pytaniem „Skończyć pracę?" (`AppViewModel`); kończy się sama po `isWorking = false`).
-`LocationPublisher`: GPS → pole (`fieldWith`, 30 m zapasu przy wyjeździe) → wysyłka tylko gdy trzeba
+Bateria: GPS co 5 s w ruchu, co 30 s po 2 min postoju (`core-domain/GpsPace.kt`, `LocationPublisher.pace` →
+`LocationSource.updates(pace)`). `LocationPublisher`: GPS → pole (`fieldWith`, 30 m zapasu przy wyjeździe) → wysyłka tylko gdy trzeba
 (`PositionReport.needsUpdate`). Pozycje: `LiveLocationRepository` – Firestore `harvests/{id}/locations/{uid}`
 albo lokalnie (tylko własna). Ekrany ról: „Jesteś na polu: …", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
 mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 2 h.

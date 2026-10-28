@@ -10,6 +10,7 @@ import org.junit.Test
 import pl.farmtracker.core.domain.Base
 import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.FieldColor
+import pl.farmtracker.core.domain.GpsPace
 import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
@@ -40,9 +41,11 @@ class LocationPublisherTest {
     private val gps = MutableSharedFlow<GeoPoint>()
     private val shownFields = mutableListOf<String?>()
 
+    private val publisher = LocationPublisher(fields, FakeBaseRepository(Base(base)), locations, clock)
+
     private fun TestScope.startPublishing() {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            LocationPublisher(fields, FakeBaseRepository(Base(base)), locations, clock).publish(gps) { shownFields += it?.name }
+            publisher.publish(gps) { shownFields += it?.name }
         }
     }
 
@@ -119,5 +122,20 @@ class LocationPublisherTest {
         fields.save(field)
 
         assertEquals(listOf(null, "f1"), locations.published.map { it.fieldId })
+    }
+
+    @Test
+    fun `GPS slows down after two minutes standing and speeds up when moving again`() = runTest {
+        startPublishing()
+
+        gps.emit(onTheField)
+        assertEquals(GpsPace.FAST, publisher.pace.value)
+        clock.now = 120_000
+        gps.emit(onTheField)
+        assertEquals(GpsPace.SLOW, publisher.pace.value)
+
+        clock.now = 150_000
+        gps.emit(onTheRoad)
+        assertEquals(GpsPace.FAST, publisher.pace.value)
     }
 }
