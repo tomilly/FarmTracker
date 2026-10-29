@@ -14,19 +14,18 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Agriculture
+import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationSearching
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Settings
@@ -47,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -58,6 +58,7 @@ import pl.farmtracker.core.ui.RoleUi
 import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.StatusPill
 import pl.farmtracker.core.ui.component.Tone
+import pl.farmtracker.core.ui.format.formatDistance
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
@@ -106,27 +107,28 @@ internal fun StartWorkButton(onStartWork: () -> Unit, modifier: Modifier = Modif
 }
 
 /**
- * „Kończę pracę" – celowo mniejszy (obrys, nie pełna szerokość) i na dole ekranu, z dala od głównych przycisków,
- * i z potwierdzeniem: przypadkowe zakończenie wyłącza lokalizację, a inni tracą maszynę z mapy.
+ * „Kończę" – celowo mały kwadrat w lewym dolnym rogu, z dala od „Prowadź do…", i z potwierdzeniem: przypadkowe
+ * zakończenie wyłącza lokalizację, a inni tracą maszynę z mapy.
  */
 @Composable
 internal fun StopWorkButton(onStopWork: () -> Unit, modifier: Modifier = Modifier) {
     var confirming by rememberSaveable { mutableStateOf(false) }
     val error = MaterialTheme.colorScheme.error
-    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        OutlinedButton(
-            onClick = { confirming = true },
-            modifier = Modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget),
-            // Nieprzezroczysty – czytelny także na mapie.
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = error,
-            ),
-            border = BorderStroke(2.dp, error),
-        ) {
+    OutlinedButton(
+        onClick = { confirming = true },
+        modifier = modifier.widthIn(min = FarmTrackerDimens.BigButtonMinHeight).heightIn(min = FarmTrackerDimens.BigButtonMinHeight),
+        shape = MaterialTheme.shapes.medium,
+        // Nieprzezroczysty – czytelny także na mapie.
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = error,
+        ),
+        border = BorderStroke(2.dp, error),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Filled.Stop, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.roles_stop_work), style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.roles_stop_work_short), style = MaterialTheme.typography.labelMedium)
         }
     }
     if (confirming) {
@@ -172,49 +174,28 @@ fun StopWorkDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
-/** Zawsze widać, że inni widzą moją pozycję (CLAUDE.md) – i gdzie według telefonu jestem. */
+/** Stan jednym słowem w karcie na mapie: „Ładujesz", „Na polu Za lasem"… */
 @Composable
-internal fun MyPositionPills(position: MyPosition, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatusPill(text = stringResource(R.string.roles_location_shared), icon = Icons.Filled.MyLocation, tone = Tone.Go)
-        when (position) {
-            MyPosition.Searching -> StatusPill(
-                text = stringResource(R.string.roles_position_searching),
-                icon = Icons.Filled.LocationSearching,
-            )
-            is MyPosition.OnField -> StatusPill(
-                text = stringResource(R.string.roles_position_on_field, position.fieldName),
-                icon = Icons.Filled.Agriculture,
-                tone = Tone.Go,
-            )
-            MyPosition.OffField -> StatusPill(
-                text = stringResource(R.string.roles_position_off_field),
-                icon = Icons.AutoMirrored.Filled.ArrowForward,
-                tone = Tone.Warning,
-            )
-            MyPosition.Loading -> StatusPill(
-                text = stringResource(R.string.roles_position_loading),
-                icon = Icons.Filled.Download,
-                tone = Tone.Go,
-            )
-            MyPosition.ToBase -> StatusPill(
-                text = stringResource(R.string.roles_position_to_base),
-                icon = Icons.Filled.LocalShipping,
-                tone = Tone.Go,
-            )
-            MyPosition.ToField -> StatusPill(
-                text = stringResource(R.string.roles_position_to_field),
-                icon = Icons.Filled.Route,
-                tone = Tone.Go,
-            )
-            MyPosition.AtBase -> StatusPill(
-                text = stringResource(R.string.roles_position_at_base),
-                icon = Icons.Filled.Warehouse,
-                tone = Tone.Go,
-            )
-        }
-    }
+internal fun MyPosition.title(): String = when (this) {
+    MyPosition.Searching -> stringResource(R.string.roles_position_searching)
+    is MyPosition.OnField -> stringResource(R.string.roles_position_on_field, fieldName)
+    MyPosition.OffField -> stringResource(R.string.roles_position_off_field)
+    MyPosition.Loading -> stringResource(R.string.roles_position_loading)
+    MyPosition.ToBase -> stringResource(R.string.roles_position_to_base)
+    MyPosition.ToField -> stringResource(R.string.roles_position_to_field)
+    MyPosition.AtBase -> stringResource(R.string.roles_position_at_base)
 }
+
+internal val MyPosition.icon: ImageVector
+    get() = when (this) {
+        MyPosition.Searching -> Icons.Filled.LocationSearching
+        is MyPosition.OnField -> Icons.Filled.Grass
+        MyPosition.OffField -> Icons.AutoMirrored.Filled.ArrowForward
+        MyPosition.Loading -> Icons.Filled.Download
+        MyPosition.ToBase -> Icons.Filled.LocalShipping
+        MyPosition.ToField -> Icons.Filled.Route
+        MyPosition.AtBase -> Icons.Filled.Warehouse
+    }
 
 /** Co robi kierowca – jego status wykryty z pozycji, np. „ładuje", „wraca do bazy". */
 @Composable
@@ -227,37 +208,38 @@ private fun Coworker.tripText(): String? = when (trip) {
 }
 
 /**
- * Gdzie są inni w danej roli, np. „Marek – na polu Za lasem", „Rysiek – na polu Za lasem, stoi od 7 min";
- * nikt – „Sieczkarnia nie pracuje".
+ * Co robi ktoś inny: „ładuje", „na polu Za lasem", „jedzie na pole · 1,2 km" – odległość tylko, gdy jest w drodze
+ * (wtedy ważne, kiedy dojedzie): jedzie na pole / do bazy albo jest poza polami.
  */
 @Composable
-internal fun CoworkerPills(role: Role, coworkers: List<Coworker>, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (coworkers.isEmpty()) {
-            StatusPill(
-                text = stringResource(R.string.roles_nobody_working, stringResource(RoleUi.labelRes(role))),
-                icon = RoleUi.icon(role),
-            )
-        }
-        coworkers.forEach { coworker ->
-            val tripText = coworker.tripText()
-            val where = when {
-                coworker.isStale -> stringResource(R.string.roles_coworker_stale)
-                tripText != null -> tripText
-                coworker.fieldName != null -> stringResource(R.string.roles_coworker_on_field, coworker.fieldName)
-                else -> stringResource(R.string.roles_coworker_off_field)
-            }
-            val status = coworker.standingMinutes?.let { stringResource(R.string.roles_coworker_standing, where, it) } ?: where
-            StatusPill(
-                text = stringResource(R.string.roles_coworker, coworker.name, status),
-                icon = RoleUi.icon(coworker.role),
-                tone = when {
-                    coworker.isStale -> Tone.Neutral
-                    tripText != null || coworker.fieldName != null -> Tone.Go
-                    else -> Tone.Warning
-                },
-            )
-        }
+internal fun Coworker.doing(): String {
+    val tripText = tripText()
+    val what = when {
+        isStale -> stringResource(R.string.roles_coworker_stale)
+        tripText != null -> tripText
+        fieldName != null -> stringResource(R.string.roles_coworker_on_field, fieldName)
+        else -> stringResource(R.string.roles_coworker_off_field)
+    }
+    val onTheRoad = trip in ON_THE_ROAD || (fieldName == null && trip != Trip.AT_BASE)
+    val distance = distanceMeters?.takeIf { !isStale && onTheRoad } ?: return what
+    return stringResource(R.string.roles_coworker_distance, what, formatDistance(distance))
+}
+
+private val ON_THE_ROAD = setOf(Trip.TO_FIELD, Trip.TO_BASE)
+
+/**
+ * Linijki do karty stanu: „Rysiek – na polu Za lasem, stoi 7 min", „Marek – ładuje"; nikt – „Sieczkarnia nie
+ * pracuje".
+ */
+@Composable
+internal fun crewLines(role: Role, coworkers: List<Coworker>): List<String> {
+    if (coworkers.isEmpty()) {
+        return listOf(stringResource(R.string.roles_nobody_working, stringResource(RoleUi.labelRes(role))))
+    }
+    return coworkers.map { coworker ->
+        val doing = coworker.doing()
+        val status = coworker.standingMinutes?.let { stringResource(R.string.roles_coworker_standing, doing, it) } ?: doing
+        stringResource(R.string.roles_coworker, coworker.name, status)
     }
 }
 
@@ -296,19 +278,10 @@ private fun StopWorkDialogPreview() {
 
 @PreviewLightDark
 @Composable
-private fun WorkPillsPreview() {
+private fun StopWorkButtonPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         Surface {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                MyPositionPills(MyPosition.OnField("Za lasem"))
-                CoworkerPills(
-                    role = Role.HARVESTER,
-                    coworkers = listOf(
-                        Coworker("Marek", Role.HARVESTER, fieldName = "Za lasem", isStale = false),
-                        Coworker("Rysiek", Role.HARVESTER, fieldName = null, isStale = true),
-                    ),
-                )
-            }
+            Box(Modifier.padding(16.dp)) { StopWorkButton(onStopWork = {}) }
         }
     }
 }

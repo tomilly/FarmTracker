@@ -41,6 +41,7 @@ private val ButtonContentPadding = PaddingValues(horizontal = 20.dp, vertical = 
  *
  * @param selected `null` – zwykły przycisk; `true`/`false` – przycisk wyboru (np. status kierowcy),
  * zaznaczony pokazuje „ptaszek" i jest tak ogłaszany przez TalkBack.
+ * @param subtitle druga, mniejsza linijka pod podpisem (np. odległość „4,2 km")
  */
 @Composable
 fun BigActionButton(
@@ -51,6 +52,7 @@ fun BigActionButton(
     tone: Tone = Tone.Primary,
     enabled: Boolean = true,
     selected: Boolean? = null,
+    subtitle: String? = null,
 ) {
     val buttonModifier = modifier
         .fillMaxWidth()
@@ -62,7 +64,10 @@ fun BigActionButton(
     val content: @Composable RowScope.() -> Unit = {
         Icon(icon, contentDescription = null, modifier = Modifier.size(FarmTrackerDimens.BigButtonIconSize))
         Spacer(Modifier.width(FarmTrackerDimens.IconTextGap))
-        Text(text = text, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(text = text, style = MaterialTheme.typography.labelLarge)
+            if (subtitle != null) Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
+        }
         if (selected == true) {
             Icon(
                 Icons.Filled.CheckCircle,

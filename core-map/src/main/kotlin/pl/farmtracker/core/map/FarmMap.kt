@@ -31,6 +31,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.OnCameraTrackingChangedListener
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
@@ -160,6 +161,7 @@ internal fun FarmMap(
     onMapTap: (GeoPoint) -> Unit,
     onCameraRequestHandled: (id: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onFollowingChanged: (Boolean) -> Unit = {},
 ) {
     val baseLayer = chrome.baseLayer
     val showParcels = chrome.showParcels
@@ -183,6 +185,7 @@ internal fun FarmMap(
     val currentChrome by rememberUpdatedState(chrome)
     val currentOnCameraRequestHandled by rememberUpdatedState(onCameraRequestHandled)
     val currentKeepInView by rememberUpdatedState(overlays.keepInView)
+    val currentOnFollowingChanged by rememberUpdatedState(onFollowingChanged)
 
     // Ktoś sam przesunął albo przybliżył mapę – nie poprawiamy mu zoomu, aż znów kliknie „Gdzie jestem".
     var autoZoom by remember { mutableStateOf(true) }
@@ -241,6 +244,14 @@ internal fun FarmMap(
             mapLibreMap.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) autoZoom = false
             }
+            mapLibreMap.locationComponent.addOnCameraTrackingChangedListener(
+                object : OnCameraTrackingChangedListener {
+                    override fun onCameraTrackingDismissed() = currentOnFollowingChanged(false)
+
+                    override fun onCameraTrackingChanged(currentMode: Int) =
+                        currentOnFollowingChanged(currentMode != CameraMode.NONE)
+                },
+            )
             mapLibreMap.addOnMapClickListener { latLng ->
                 currentOnMapTap(GeoPoint(latitude = latLng.latitude, longitude = latLng.longitude))
                 true

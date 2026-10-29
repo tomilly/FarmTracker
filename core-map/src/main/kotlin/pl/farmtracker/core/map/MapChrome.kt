@@ -48,6 +48,8 @@ data class MapChromeState(
     val cameraRequest: CameraRequest? = null,
     /** [CameraRequest.id] ostatniej prośby, którą mapa już wykonała. */
     val handledCameraRequestId: Int = 0,
+    /** Mapa jedzie za mną – przesunięcie palcem to wyłącza (ikona „wyśrodkuj" pokazuje, który to stan). */
+    val following: Boolean = false,
 ) {
     val parcelsVisible: Boolean get() = showParcels && zoom >= MapSources.PARCELS_MIN_ZOOM
 
@@ -157,6 +159,8 @@ class MapChromeController(initial: MapChromeState = MapChromeState()) {
     fun selectBaseLayer(layer: BaseLayer) = _state.update { it.copy(baseLayer = layer) }
 
     fun toggleParcels() = _state.update { it.copy(showParcels = !it.showParcels) }
+
+    fun onFollowingChanged(following: Boolean) = _state.update { it.copy(following = following) }
 
     fun onCameraIdle(zoom: Double, center: GeoPoint? = null) =
         _state.update { it.copy(zoom = zoom, center = center ?: it.center) }

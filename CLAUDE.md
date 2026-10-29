@@ -30,7 +30,10 @@ Pełny opis produktu, zakres MVP, backlog i model danych: **docs/BRIEF.md** – 
   `MapChromeController`, warstwy), `core-testing` (fake'i, reguły testowe),
   `data`, `feature-*`. Konfiguracja buildów w pluginach konwencji `build-logic/` (`farmtracker.android.library`,
   `farmtracker.android.compose`, `farmtracker.hilt`, `farmtracker.jvm.library`, …).
-- UI buduj z komponentów `core-ui`: `BigActionButton`, `RoleScaffold`/`FarmTrackerScaffold`, `StatusPill`, `Tone`.
+- UI buduj z komponentów `core-ui`: `BigActionButton`, `FarmTrackerScaffold`, `MapStatusCard`, `StatusPill`, `Tone`.
+- Ekrany ról to mapa na cały ekran (`core-map/FullScreenMap`, w feature-roles `common/RoleMap`): bez górnego paska,
+  stan małą kartą w lewym górnym rogu (`MapStatusCard`), po prawej okrągłe ikony (warstwy, celownik „Gdzie jestem" –
+  niebieski, gdy mapa jedzie za mną), najwyżej jeden duży przycisk na dole albo arkusz z listą (admin, baza).
 - Każda nowa funkcja: ViewModel + testy jednostkowe; komponenty UI z `@Preview`.
 - Małe commity, opisowe wiadomości (EN lub PL, spójnie).
 
@@ -76,23 +79,24 @@ M4 w toku: „Zaczynam pracę" (sieczkarnia, kierowca) pyta o zgodę na lokaliza
 Bateria: GPS co 5 s w ruchu, co 30 s po 2 min postoju (`core-domain/GpsPace.kt`, `LocationPublisher.pace` →
 `LocationSource.updates(pace)`). `LocationPublisher`: GPS → pole (`fieldWith`, 30 m zapasu przy wyjeździe) → wysyłka tylko gdy trzeba
 (`PositionReport.needsUpdate`). Pozycje: `LiveLocationRepository` – Firestore `harvests/{id}/locations/{uid}`
-albo lokalnie (tylko własna). Ekrany ról: „Jesteś na polu: …", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
+albo lokalnie (tylko własna). Karta stanu: „Na polu …" / „Ładujesz", gdzie sieczkarnia/kierowcy (`common/CrewWatch`);
 mapa: kropki innych w kolorze roli, szare po 3 min, znikają po 2 h.
-Kierowca i sieczkarnia w pracy widzą mapę na cały ekran (`common/WorkMap`): jedzie za nimi i oddala się tyle, by
+Kierowca i sieczkarnia: mapa także przed pracą; w pracy jedzie za nimi i oddala się tyle, by
 było widać sieczkarnię / nadjeżdżające przyczepy (`MapOverlays.keepInView`); pole z sieczkarnią podświetlone na mapach
 (`activeFieldIds`). Status kierowcy bez klikania: `core-domain/Trip.kt`
 (`TripTracker`: przy sieczkarni 2 pozycje ≤ 40 m → ładuje; przy bazie ≤ 150 m → w bazie (przed polem); zjechał z pola →
 wraca do bazy; odjechał z bazy → jedzie na pole; w drodze kierunek względem bazy po 300 m), liczony w `LocationPublisher`,
 wysyłany w `PositionReport.trip`; z ładunkiem (ładował) przez inne pole dalej „wraca do bazy" aż do bazy.
-„Prowadź do pola: … / do bazy" u kierowcy (`common/DriveToButton`, cel z `core-domain/DriveTo.kt` wg statusu: ładuje,
+„Prowadź do pola / do bazy" + odległość w linii prostej u kierowcy, obok mały „Kończę" (`common/DriveToButton`, cel z `core-domain/DriveTo.kt` wg statusu: ładuje,
 wraca albo już na polu sieczkarni → baza; inaczej wjazd najbliższy kierowcy na polu sieczkarni) → nawigacja Google Maps.
 Powiadomienie kierowcy „Sieczkarnia na nowym polu – Rysiek – teraz na polu …" (z dźwiękiem): liczone na telefonie
 w `WorkService` (`feature-work/HarvesterMoveWatch` + `core-domain/HarvesterMoves.kt`; start pracy i powrót na to samo
 pole to nie przejazd) – bez serwera/FCM. „Stoi od N min" (≥ 5 min w promieniu 50 m): `core-domain/Still.kt` → `stillSince`.
-Admin: na górze podgląd pracy (`admin/AdminViewModel`: kto gdzie i co robi, kto stoi, kto nie pracuje), „Mapa"
-startuje od wszystkich pól i bazy. „Sam też pracujesz?": „Pracuję jako sieczkarnia / kierowca" – rola na telefonie
+Admin: mapa wszystkich pól i bazy, pod nią arkusz – kto gdzie i co robi (`admin/AdminViewModel`, żółte „stoi N min"),
+kto nie pracuje, kafelki Pola/Baza/Ludzie/Ustawienia; ikona w rogu otwiera dużą mapę (edycja pól, działki). Baza: arkusz
+„Do bazy" – z ładunkiem najbliżej na górze. „Sam też pracujesz?": „Sieczkarnia / Kierowca" – rola na telefonie
 (`SessionRepository`) przykrywa rolę ze zbioru (w wersji na telefon tylko adminowi, `AppViewModel.workAs`); na ekranie roli
-„Admin" w pasku wraca do panelu (ukryte w czasie pracy). Rolę i ludzi zbioru ekrany biorą z `data/.../session/PeopleRepository`
+„Admin" pod ikoną warstw wraca do panelu (ukryte w czasie pracy). Rolę i ludzi zbioru ekrany biorą z `data/.../session/PeopleRepository`
 (wspólny zbiór albo telefon), nie z `SessionRepository` – ta ma tylko rolę wybraną na telefonie.
 Kamienie milowe: docs/BRIEF.md §9.
 

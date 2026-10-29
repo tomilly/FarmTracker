@@ -1,119 +1,96 @@
 package pl.farmtracker.feature.roles.harvester
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.farmtracker.core.domain.Role
-import pl.farmtracker.core.ui.component.RoleScaffold
-import pl.farmtracker.core.ui.component.StatusPill
+import pl.farmtracker.core.domain.Trip
+import pl.farmtracker.core.ui.RoleUi
+import pl.farmtracker.core.ui.component.MapStatusCard
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 import pl.farmtracker.feature.roles.common.Coworker
-import pl.farmtracker.feature.roles.common.CoworkerPills
 import pl.farmtracker.feature.roles.common.MyPosition
-import pl.farmtracker.feature.roles.common.MyPositionPills
-import pl.farmtracker.feature.roles.common.OpenMapButton
+import pl.farmtracker.feature.roles.common.RoleMap
 import pl.farmtracker.feature.roles.common.StartWorkButton
 import pl.farmtracker.feature.roles.common.StopWorkButton
-import pl.farmtracker.feature.roles.common.WorkMap
+import pl.farmtracker.feature.roles.common.crewLines
+import pl.farmtracker.feature.roles.common.icon
+import pl.farmtracker.feature.roles.common.title
 
+/**
+ * Sieczkarnia: mapa na cały ekran, w pracy jedzie za nią i pokazuje nadjeżdżające przyczepy. W rogu mała karta:
+ * na którym polu jestem, kto ładuje, kto jedzie i jak daleko. W pracy żadnego dużego przycisku – sieczkarnia tylko
+ * jedzie; mały „Kończę" w lewym dolnym rogu.
+ */
 @Composable
 fun HarvesterScreen(
-    onOpenMap: () -> Unit,
     onSwitchRole: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    /** Admin, który sam pracuje – „Admin" wraca do panelu (gdy nie pracuje; w pracy najpierw „Kończę pracę"). */
+    /** Admin, który sam pracuje – „Admin" wraca do panelu (gdy nie pracuje; w pracy najpierw „Kończę"). */
     onBackToAdmin: (() -> Unit)? = null,
     viewModel: HarvesterViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    if (uiState.isWorking) {
-        val overlays by viewModel.overlays.collectAsStateWithLifecycle()
-        // Sieczkarnia w pracy: mapa na cały ekran, jedzie za nią, z przyczepami, które do niej jadą.
-        WorkMap(
-            role = Role.HARVESTER,
-            chrome = viewModel.chrome,
-            overlays = overlays,
-            onSwitchRole = onSwitchRole,
-            modifier = modifier,
-        ) {
-            MyPositionPills(uiState.position)
-            CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
-            StopWorkButton(onStopWork = viewModel::stopWork)
-        }
-    } else {
-        HarvesterContent(
-            uiState = uiState,
-            onStartWork = viewModel::startWork,
-            onStopWork = viewModel::stopWork,
-            onOpenMap = onOpenMap,
-            onSwitchRole = onSwitchRole,
-            onBackToAdmin = onBackToAdmin,
-            modifier = modifier,
-        )
-    }
-}
-
-/** Przed pracą (i w podglądach) – w pracy sieczkarnia widzi mapę ([WorkMap]). */
-@Composable
-internal fun HarvesterContent(
-    uiState: HarvesterUiState,
-    onStartWork: () -> Unit,
-    onStopWork: () -> Unit,
-    onOpenMap: () -> Unit,
-    onSwitchRole: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-    onBackToAdmin: (() -> Unit)? = null,
-) {
-    RoleScaffold(
-        role = Role.HARVESTER,
+    val overlays by viewModel.overlays.collectAsStateWithLifecycle()
+    RoleMap(
+        chrome = viewModel.chrome,
+        overlays = overlays,
         onSwitchRole = onSwitchRole,
         onBackToAdmin = onBackToAdmin?.takeUnless { uiState.isWorking },
         modifier = modifier,
-        bottomAction = if (uiState.isWorking) {
-            { StopWorkButton(onStopWork = onStopWork) }
-        } else {
-            null
-        },
-    ) {
-        if (uiState.isWorking) {
-            MyPositionPills(uiState.position)
-        } else {
-            StatusPill(text = stringResource(R.string.roles_not_working), icon = Icons.Filled.Info)
-            StartWorkButton(onStartWork = onStartWork)
-        }
+        status = { HarvesterStatusCard(uiState) },
+        bottom = { HarvesterActions(uiState, onStartWork = viewModel::startWork, onStopWork = viewModel::stopWork) },
+    )
+}
 
-        OpenMapButton(onClick = onOpenMap)
+@Composable
+internal fun HarvesterStatusCard(uiState: HarvesterUiState, modifier: Modifier = Modifier) {
+    MapStatusCard(
+        title = if (uiState.isWorking) uiState.position.title() else stringResource(RoleUi.labelRes(Role.HARVESTER)),
+        icon = if (uiState.isWorking) uiState.position.icon else RoleUi.icon(Role.HARVESTER),
+        live = uiState.isWorking,
+        liveText = stringResource(if (uiState.isWorking) R.string.roles_live else R.string.roles_not_live),
+        details = crewLines(Role.DRIVER, uiState.drivers),
+        modifier = modifier,
+    )
+}
 
-        Text(stringResource(R.string.roles_drivers_title), style = MaterialTheme.typography.titleMedium)
-        CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
+@Composable
+internal fun ColumnScope.HarvesterActions(uiState: HarvesterUiState, onStartWork: () -> Unit, onStopWork: () -> Unit) {
+    if (uiState.isWorking) {
+        StopWorkButton(onStopWork = onStopWork)
+    } else {
+        StartWorkButton(onStartWork = onStartWork)
     }
 }
 
 @PreviewLightDark
 @Composable
 private fun HarvesterWorkingPreview() {
+    val uiState = HarvesterUiState(
+        isWorking = true,
+        position = MyPosition.OnField("Za lasem"),
+        drivers = listOf(
+            Coworker("Marek", Role.DRIVER, fieldName = "Za lasem", isStale = false, trip = Trip.LOADING),
+            Coworker("Janek", Role.DRIVER, fieldName = null, isStale = false, trip = Trip.TO_FIELD, distanceMeters = 1_200.0),
+        ),
+    )
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        HarvesterContent(
-            uiState = HarvesterUiState(
-                isWorking = true,
-                position = MyPosition.OnField("Za lasem"),
-                drivers = listOf(Coworker("Marek", Role.DRIVER, fieldName = null, isStale = false)),
-            ),
-            onStartWork = {},
-            onStopWork = {},
-            onOpenMap = {},
-            onSwitchRole = {},
-        )
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HarvesterStatusCard(uiState)
+            HarvesterActions(uiState, onStartWork = {}, onStopWork = {})
+        }
     }
 }
 
@@ -121,12 +98,9 @@ private fun HarvesterWorkingPreview() {
 @Composable
 private fun HarvesterIdlePreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        HarvesterContent(
-            uiState = HarvesterUiState(),
-            onStartWork = {},
-            onStopWork = {},
-            onOpenMap = {},
-            onSwitchRole = null,
-        )
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HarvesterStatusCard(HarvesterUiState())
+            HarvesterActions(HarvesterUiState(), onStartWork = {}, onStopWork = {})
+        }
     }
 }

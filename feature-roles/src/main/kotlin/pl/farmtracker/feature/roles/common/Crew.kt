@@ -4,6 +4,8 @@ import pl.farmtracker.core.domain.Field
 import pl.farmtracker.core.domain.LiveLocation
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
+import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.domain.geo.distanceMeters
 
 /** Gdzie jestem – z mojej pozycji: pole wykrywa telefon (geofencing), u kierowcy także co robi ([Trip]). */
 sealed interface MyPosition {
@@ -36,6 +38,8 @@ data class Coworker(
     val trip: Trip? = null,
     /** Ile minut stoi w miejscu; `null` – jedzie (albo stoi krótko, albo pozycja dawna). */
     val standingMinutes: Int? = null,
+    /** Jak daleko (w linii prostej) od mnie albo od bazy; `null` – nie wiadomo. */
+    val distanceMeters: Double? = null,
 )
 
 /** @param withTrip ekran kierowcy – zamiast samego pola pokazuje, co kierowca robi */
@@ -56,8 +60,22 @@ internal fun myPosition(
     }
 }
 
-/** Pracujący w danej roli (bez tego telefonu), po imieniu. */
-internal fun coworkers(locations: List<LiveLocation>, fields: List<Field>, nowMillis: Long, role: Role): List<Coworker> =
+/** Moja świeża pozycja – `null`, gdy telefon jej nie zna albo jest dawna. */
+internal fun myPoint(locations: List<LiveLocation>, nowMillis: Long): GeoPoint? =
+    locations.firstOrNull { it.isMe }?.takeUnless { it.isStaleAt(nowMillis) }?.point
+
+/**
+ * Pracujący w danej roli (bez tego telefonu), po imieniu.
+ *
+ * @param from skąd liczyć [Coworker.distanceMeters] (ja, baza); `null` – bez odległości
+ */
+internal fun coworkers(
+    locations: List<LiveLocation>,
+    fields: List<Field>,
+    nowMillis: Long,
+    role: Role,
+    from: GeoPoint? = null,
+): List<Coworker> =
     locations
         .filter { !it.isMe && it.role == role && !it.isGoneAt(nowMillis) }
         .map { location ->
@@ -68,6 +86,7 @@ internal fun coworkers(locations: List<LiveLocation>, fields: List<Field>, nowMi
                 isStale = location.isStaleAt(nowMillis),
                 trip = location.trip.takeIf { location.role == Role.DRIVER },
                 standingMinutes = location.takeUnless { it.isStaleAt(nowMillis) }?.standingMinutesAt(nowMillis),
+                distanceMeters = from?.distanceMeters(location.point),
             )
         }
         .sortedBy { it.name }

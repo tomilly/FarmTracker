@@ -1,42 +1,63 @@
 package pl.farmtracker.feature.roles.admin
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warehouse
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
+import pl.farmtracker.core.map.MapIconButton
 import pl.farmtracker.core.ui.RoleUi
-import pl.farmtracker.core.ui.component.BigActionButton
-import pl.farmtracker.core.ui.component.RoleScaffold
-import pl.farmtracker.core.ui.component.StatusPill
-import pl.farmtracker.core.ui.component.Tone
+import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 import pl.farmtracker.feature.roles.common.Coworker
-import pl.farmtracker.feature.roles.common.CoworkerPills
-import pl.farmtracker.feature.roles.common.OpenMapButton
+import pl.farmtracker.feature.roles.common.CoworkerRow
+import pl.farmtracker.feature.roles.common.NotWorkingRow
+import pl.farmtracker.feature.roles.common.RoleMap
 
 /**
- * Admin: na górze podgląd pracy – kto gdzie jest i co robi (ładuje, wraca do bazy, stoi od…), kto nie pracuje,
- * „Mapa" ze wszystkimi polami. W małym gospodarstwie admin często sam jedzie – „Pracuję jako sieczkarnia / kierowca". Pod spodem płaskie menu zbioru (BRIEF §4): „Pola" i „Baza" – miejsca zbioru;
- * „Ludzie" – zaproszenia i role (feature-team); „Ustawienia" – konto i wylogowanie (feature-auth).
+ * Admin: mapa całego zbioru (wszystkie pola i baza), pod nią arkusz – kto co robi (ładuje, wraca do bazy, stoi…),
+ * kto nie pracuje, menu zbioru jako 4 kafelki (BRIEF §4: „Pola", „Baza", „Ludzie", „Ustawienia") i na końcu
+ * „Sam też pracujesz?" – w małym gospodarstwie admin często sam jedzie. Ikona w rogu mapy otwiera dużą mapę
+ * (pola do edycji, działki).
  */
 @Composable
 fun AdminScreen(
@@ -54,114 +75,130 @@ fun AdminScreen(
     viewModel: AdminViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    AdminContent(
-        uiState = uiState,
-        onOpenMap = onOpenMap,
-        onWorkAs = onWorkAs,
-        onOpenFields = onOpenFields,
-        onOpenBase = onOpenBase,
-        onOpenPeople = onOpenPeople,
-        onOpenSettings = onOpenSettings,
-        onSwitchRole = onSwitchRole,
-        modifier = modifier,
-    )
-}
-
-@Composable
-internal fun AdminContent(
-    uiState: AdminUiState,
-    onOpenMap: () -> Unit,
-    onWorkAs: (Role) -> Unit,
-    onOpenFields: () -> Unit,
-    onOpenBase: () -> Unit,
-    onOpenPeople: (() -> Unit)?,
-    onOpenSettings: (() -> Unit)?,
-    onSwitchRole: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
+    val overlays by viewModel.overlays.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val comingSoon = stringResource(R.string.roles_admin_coming_soon)
     val showComingSoon: () -> Unit = { scope.launch { snackbarHostState.showSnackbar(comingSoon) } }
 
-    RoleScaffold(
-        role = Role.ADMIN,
-        onSwitchRole = onSwitchRole,
-        snackbarHostState = snackbarHostState,
-        modifier = modifier,
-    ) {
-        Text(stringResource(R.string.roles_admin_overview_title), style = MaterialTheme.typography.titleMedium)
-        CoworkerPills(role = Role.HARVESTER, coworkers = uiState.harvesters)
-        CoworkerPills(role = Role.DRIVER, coworkers = uiState.drivers)
-        if (uiState.notWorking.isNotEmpty()) {
-            StatusPill(
-                text = stringResource(R.string.roles_admin_not_working, uiState.notWorking.joinToString(", ")),
-                icon = Icons.Filled.PersonOff,
-            )
+    Box(modifier) {
+        RoleMap(
+            chrome = viewModel.chrome,
+            overlays = overlays,
+            onSwitchRole = onSwitchRole,
+            mapButtons = {
+                MapIconButton(
+                    icon = Icons.Filled.OpenInFull,
+                    contentDescription = stringResource(R.string.roles_admin_big_map),
+                    onClick = onOpenMap,
+                )
+            },
+            sheet = {
+                AdminSheet(
+                    uiState = uiState,
+                    onWorkAs = onWorkAs,
+                    onOpenFields = onOpenFields,
+                    onOpenBase = onOpenBase,
+                    onOpenPeople = onOpenPeople ?: showComingSoon,
+                    onOpenSettings = onOpenSettings ?: showComingSoon,
+                )
+            },
+        )
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.TopCenter).statusBarsPadding())
+    }
+}
+
+@Composable
+internal fun ColumnScope.AdminSheet(
+    uiState: AdminUiState,
+    onWorkAs: (Role) -> Unit,
+    onOpenFields: () -> Unit,
+    onOpenBase: () -> Unit,
+    onOpenPeople: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    Text(stringResource(R.string.roles_admin_overview_title), style = MaterialTheme.typography.titleMedium)
+    val working = uiState.harvesters + uiState.drivers
+    if (working.isEmpty() && uiState.notWorking.isEmpty()) {
+        Text(stringResource(R.string.roles_admin_nobody), style = MaterialTheme.typography.bodyLarge)
+    }
+    working.forEach { CoworkerRow(it) }
+    uiState.notWorking.forEach { NotWorkingRow(it) }
+
+    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MenuTile(stringResource(R.string.roles_admin_fields), Icons.Filled.Map, onOpenFields, Modifier.weight(1f))
+        MenuTile(stringResource(R.string.roles_admin_base), Icons.Filled.Warehouse, onOpenBase, Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MenuTile(stringResource(R.string.roles_admin_people), Icons.Filled.Groups, onOpenPeople, Modifier.weight(1f))
+        MenuTile(stringResource(R.string.roles_admin_settings), Icons.Filled.Settings, onOpenSettings, Modifier.weight(1f))
+    }
+
+    Text(
+        stringResource(R.string.roles_admin_work_title),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(Role.HARVESTER, Role.DRIVER).forEach { role ->
+            OutlinedButton(
+                onClick = { onWorkAs(role) },
+                modifier = Modifier.weight(1f).heightIn(min = FarmTrackerDimens.MinTouchTarget),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Icon(RoleUi.icon(role), contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(RoleUi.labelRes(role)), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            }
         }
-        OpenMapButton(onClick = onOpenMap)
+    }
+}
 
-        Text(stringResource(R.string.roles_admin_work_title), style = MaterialTheme.typography.titleMedium)
-        BigActionButton(
-            text = stringResource(R.string.roles_admin_work_as_harvester),
-            icon = RoleUi.icon(Role.HARVESTER),
-            onClick = { onWorkAs(Role.HARVESTER) },
-            tone = Tone.Go,
-        )
-        BigActionButton(
-            text = stringResource(R.string.roles_admin_work_as_driver),
-            icon = RoleUi.icon(Role.DRIVER),
-            onClick = { onWorkAs(Role.DRIVER) },
-            tone = Tone.Go,
-        )
-
-        Text(stringResource(R.string.roles_admin_manage_title), style = MaterialTheme.typography.titleMedium)
-        BigActionButton(
-            text = stringResource(R.string.roles_admin_fields),
-            icon = Icons.Filled.Map,
-            onClick = onOpenFields,
-        )
-        BigActionButton(
-            text = stringResource(R.string.roles_admin_base),
-            icon = Icons.Filled.Warehouse,
-            onClick = onOpenBase,
-        )
-        BigActionButton(
-            text = stringResource(R.string.roles_admin_people),
-            icon = Icons.Filled.Groups,
-            onClick = onOpenPeople ?: showComingSoon,
-        )
-        BigActionButton(
-            text = stringResource(R.string.roles_admin_settings),
-            icon = Icons.Filled.Settings,
-            onClick = onOpenSettings ?: showComingSoon,
-        )
+/** Kafelek menu zbioru: ikona + podpis, mniejszy niż duże przyciski – to nie praca, tylko ustawienia zbioru. */
+@Composable
+private fun MenuTile(text: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
 @PreviewLightDark
 @Composable
-private fun AdminScreenPreview() {
+private fun AdminSheetPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        AdminContent(
-            uiState = AdminUiState(
-                harvesters = listOf(
-                    Coworker("Rysiek", Role.HARVESTER, fieldName = "Za lasem", isStale = false, standingMinutes = 7),
-                ),
-                drivers = listOf(
-                    Coworker("Marek", Role.DRIVER, fieldName = "Za lasem", isStale = false, trip = Trip.LOADING),
-                    Coworker("Janek", Role.DRIVER, fieldName = null, isStale = false, trip = Trip.TO_BASE),
-                    Coworker("Wojtek", Role.DRIVER, fieldName = null, isStale = false, trip = Trip.AT_BASE, standingMinutes = 12),
-                ),
-                notWorking = listOf("Staszek"),
-            ),
-            onOpenMap = {},
-            onWorkAs = {},
-            onOpenFields = {},
-            onOpenBase = {},
-            onOpenPeople = {},
-            onOpenSettings = {},
-            onSwitchRole = {},
-        )
+        Surface {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AdminSheet(
+                    uiState = AdminUiState(
+                        harvesters = listOf(
+                            Coworker("Rysiek", Role.HARVESTER, fieldName = "Za lasem", isStale = false, standingMinutes = 7),
+                        ),
+                        drivers = listOf(
+                            Coworker("Marek", Role.DRIVER, fieldName = "Za lasem", isStale = false, trip = Trip.LOADING),
+                            Coworker("Janek", Role.DRIVER, fieldName = null, isStale = false, trip = Trip.TO_BASE),
+                            Coworker("Wojtek", Role.DRIVER, fieldName = null, isStale = false, trip = Trip.AT_BASE, standingMinutes = 12),
+                        ),
+                        notWorking = listOf("Staszek"),
+                    ),
+                    onWorkAs = {},
+                    onOpenFields = {},
+                    onOpenBase = {},
+                    onOpenPeople = {},
+                    onOpenSettings = {},
+                )
+            }
+        }
     }
 }

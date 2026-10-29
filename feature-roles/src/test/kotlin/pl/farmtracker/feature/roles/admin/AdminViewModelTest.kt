@@ -5,9 +5,13 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import pl.farmtracker.core.domain.Base
 import pl.farmtracker.core.domain.Member
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.Trip
+import pl.farmtracker.core.domain.geo.GeoPoint
+import pl.farmtracker.core.map.CameraRequest
+import pl.farmtracker.core.testing.FakeBaseRepository
 import pl.farmtracker.core.testing.FakePeopleRepository
 import pl.farmtracker.core.testing.MainDispatcherRule
 import pl.farmtracker.feature.roles.common.Coworker
@@ -30,7 +34,7 @@ class AdminViewModelTest {
             Member("Silos", "Silos", "+48600000006", Role.BASE),
         ),
     )
-    private val viewModel by lazy { AdminViewModel(crew.watch, people) }
+    private val viewModel by lazy { AdminViewModel(crew.watch, people, FakeBaseRepository(Base(GeoPoint(49.95, 17.005)))) }
     private val state get() = viewModel.uiState.value
 
     @Test
@@ -60,6 +64,15 @@ class AdminViewModelTest {
             )
             assertEquals(listOf("Staszek"), state.notWorking)
         }
+
+    @Test
+    fun `the map starts with all fields and the base in view`() = runTest(mainDispatcherRule.testDispatcher) {
+        val request = viewModel.chrome.state.value.cameraRequest as CameraRequest.ShowArea
+
+        // Pole „Za lasem" (50,00–50,01) i baza na południe od niego (49,95).
+        assertEquals(49.95, request.bounds.south, 1e-9)
+        assertEquals(50.01, request.bounds.north, 1e-9)
+    }
 
     @Test
     fun `an old position does not say how long someone stands`() = runTest(mainDispatcherRule.testDispatcher) {

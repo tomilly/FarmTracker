@@ -19,7 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,9 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.ui.R
-import pl.farmtracker.core.ui.RoleUi
 import pl.farmtracker.core.ui.theme.FarmTrackerDimens
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 
@@ -136,72 +134,11 @@ fun FarmTrackerScaffold(
     }
 }
 
-/**
- * Ekran roli: w pasku zawsze widać, kim jestem (ikona + nazwa roli) – test „trunk test" (BRIEF §4).
- *
- * @param onSwitchRole gdy nie `null`, w pasku pojawia się „Zmień rolę" (tymczasowo, tylko w wersji debug).
- * @param onBackToAdmin gdy nie `null`, w pasku „Admin" – admin, który sam pracuje, wraca do swojego panelu
- * @param bottomAction przycisk przyklejony do dołu ekranu (np. „Kończę pracę") – z dala od głównych przycisków
- */
-@Composable
-fun RoleScaffold(
-    role: Role,
-    modifier: Modifier = Modifier,
-    onSwitchRole: (() -> Unit)? = null,
-    onBackToAdmin: (() -> Unit)? = null,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    bottomAction: (@Composable () -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    FarmTrackerScaffold(
-        title = stringResource(RoleUi.labelRes(role)),
-        icon = RoleUi.icon(role),
-        modifier = modifier,
-        snackbarHostState = snackbarHostState,
-        bottomAction = bottomAction,
-        actions = {
-            when {
-                onBackToAdmin != null -> BackToAdminButton(onClick = onBackToAdmin)
-                onSwitchRole != null -> SwitchRoleButton(onClick = onSwitchRole)
-            }
-        },
-        content = content,
-    )
-}
-
-/** „Admin" w górnym pasku ekranu sieczkarni / kierowcy – admin, który sam pracował, wraca do panelu. */
-@Composable
-fun BackToAdminButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TextButton(
-        onClick = onClick,
-        modifier = modifier,
-        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
-    ) {
-        Icon(RoleUi.icon(Role.ADMIN), contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(RoleUi.labelRes(Role.ADMIN)), style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-/** „Zmień rolę" w górnym pasku (tymczasowo, tylko w wersji debug) – także na ekranach ról z mapą. */
-@Composable
-fun SwitchRoleButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TextButton(
-        onClick = onClick,
-        modifier = modifier,
-        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
-    ) {
-        Icon(Icons.Filled.SwapHoriz, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(R.string.core_ui_switch_role), style = MaterialTheme.typography.labelMedium)
-    }
-}
-
 @PreviewLightDark
 @Composable
-private fun RoleScaffoldPreview() {
+private fun FarmTrackerScaffoldPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
-        RoleScaffold(role = Role.DRIVER, onSwitchRole = {}) {
+        FarmTrackerScaffold(title = "Pola", icon = Icons.Filled.Map, onBack = {}) {
             Text("Treść ekranu", style = MaterialTheme.typography.bodyLarge)
         }
     }

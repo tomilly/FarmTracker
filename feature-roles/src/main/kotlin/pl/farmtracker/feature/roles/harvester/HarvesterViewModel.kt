@@ -20,6 +20,7 @@ import pl.farmtracker.feature.roles.common.Coworker
 import pl.farmtracker.feature.roles.common.CrewWatch
 import pl.farmtracker.feature.roles.common.MyPosition
 import pl.farmtracker.feature.roles.common.coworkers
+import pl.farmtracker.feature.roles.common.myPoint
 import pl.farmtracker.feature.roles.common.myPosition
 import pl.farmtracker.feature.roles.common.toWorkMapOverlays
 import javax.inject.Inject
@@ -49,7 +50,8 @@ class HarvesterViewModel @Inject constructor(
         HarvesterUiState(
             isWorking = working,
             position = myPosition(crew.locations, crew.fields, crew.nowMillis),
-            drivers = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.DRIVER),
+            // Odległość – jak daleko jest przyczepa, która do mnie jedzie.
+            drivers = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.DRIVER, from = myPoint(crew.locations, crew.nowMillis)),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HarvesterUiState())
 

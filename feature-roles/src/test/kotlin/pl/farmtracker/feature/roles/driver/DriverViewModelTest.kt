@@ -127,4 +127,15 @@ class DriverViewModelTest {
         crew.locations.publish(PositionReport(crew.onTheField, "f1", crew.clock.now, Trip.LOADING))
         assertEquals(DriveTo.ToBase(base.location), state.driveTo)
     }
+
+    @Test
+    fun `shows how far the target is in a straight line, and how far the harvester is`() = driverTest {
+        crew.locations.locations.value = listOf(crew.someone("Rysiek", Role.HARVESTER, crew.onTheField, fieldId = "f1"))
+        assertEquals(null, state.driveToMeters)
+
+        // Z drogi (50,02) do sieczkarni na polu (50,005): 0,015° szerokości – ok. 1,7 km.
+        crew.locations.publish(PositionReport(crew.onTheRoad, null, crew.clock.now, Trip.TO_FIELD))
+        assertEquals(1_668.0, state.driveToMeters!!, 5.0)
+        assertEquals(1_668.0, state.harvesters.single().distanceMeters!!, 5.0)
+    }
 }

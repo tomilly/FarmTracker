@@ -81,12 +81,12 @@ private fun FarmTrackerNavHost(
         composable<OnboardingDestination> { OnboardingScreen() }
         composable<RolePickerDestination> { RolePickerScreen() }
         composable<HarvesterDestination> {
-            HarvesterScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole, onBackToAdmin = onBackToAdmin)
+            HarvesterScreen(onSwitchRole = onSwitchRole, onBackToAdmin = onBackToAdmin)
         }
         composable<DriverDestination> {
-            DriverScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole, onBackToAdmin = onBackToAdmin)
+            DriverScreen(onSwitchRole = onSwitchRole, onBackToAdmin = onBackToAdmin)
         }
-        composable<BaseDestination> { BaseScreen(onOpenMap = openMap, onSwitchRole = onSwitchRole) }
+        composable<BaseDestination> { BaseScreen(onSwitchRole = onSwitchRole) }
         composable<AdminDestination> {
             AdminScreen(
                 onOpenMap = openMap,

@@ -6,12 +6,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.Role
+import pl.farmtracker.core.map.MapChromeController
+import pl.farmtracker.core.map.MapOverlays
+import pl.farmtracker.data.base.BaseRepository
 import pl.farmtracker.data.session.PeopleRepository
 import pl.farmtracker.feature.roles.common.Coworker
 import pl.farmtracker.feature.roles.common.CrewWatch
 import pl.farmtracker.feature.roles.common.coworkers
+import pl.farmtracker.feature.roles.common.showWholeHarvest
+import pl.farmtracker.feature.roles.common.toWorkMapOverlays
 import javax.inject.Inject
 
 data class AdminUiState(
@@ -22,9 +29,17 @@ data class AdminUiState(
     val notWorking: List<String> = emptyList(),
 )
 
-/** Admin – podgląd całej pracy na górze ekranu, pod nim menu zbioru. */
+/** Admin – mapa całego zbioru, pod nią kto co robi i menu zbioru. */
 @HiltViewModel
-class AdminViewModel @Inject constructor(crewWatch: CrewWatch, peopleRepository: PeopleRepository) : ViewModel() {
+class AdminViewModel @Inject constructor(
+    crewWatch: CrewWatch,
+    peopleRepository: PeopleRepository,
+    baseRepository: BaseRepository,
+) : ViewModel() {
+
+    val chrome = MapChromeController()
+
+    private val basePoint = baseRepository.base.map { it?.location }
 
     val uiState: StateFlow<AdminUiState> = combine(crewWatch.snapshot, peopleRepository.members) { crew, members ->
         val working = crew.locations.filterNot { it.isGoneAt(crew.nowMillis) }.map { it.userId }.toSet()
@@ -37,6 +52,16 @@ class AdminViewModel @Inject constructor(crewWatch: CrewWatch, peopleRepository:
                 .sorted(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AdminUiState())
+
+    /** Pola (z podświetlonym polem sieczkarni), baza i wszyscy pracujący. */
+    val overlays: StateFlow<MapOverlays> = combine(crewWatch.snapshot, basePoint) { crew, base ->
+        crew.toWorkMapOverlays(base) { false }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MapOverlays())
+
+    init {
+        // Admin patrzy na całą pracę: na start wszystkie pola i baza na jednym widoku (zamiast „ja").
+        viewModelScope.launch { chrome.showWholeHarvest(crewWatch.snapshot.map { it.fields }, basePoint) }
+    }
 
     private companion object {
         /** Kto w ogóle „zaczyna pracę" – baza stoi w miejscu, a admin tylko patrzy. */

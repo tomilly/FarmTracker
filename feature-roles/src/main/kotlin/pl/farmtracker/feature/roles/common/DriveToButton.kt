@@ -17,22 +17,26 @@ import pl.farmtracker.core.domain.DriveTo
 import pl.farmtracker.core.domain.geo.GeoPoint
 import pl.farmtracker.core.ui.component.BigActionButton
 import pl.farmtracker.core.ui.component.Tone
+import pl.farmtracker.core.ui.format.formatDistance
 import pl.farmtracker.core.ui.theme.FarmTrackerTheme
 import pl.farmtracker.feature.roles.R
 
 /**
- * „Prowadź do pola: Za lasem" / „Prowadź do bazy" – nawigacja w Google Maps jednym dotknięciem; cel wybiera telefon
- * ([pl.farmtracker.core.domain.driveTo]), kierowca niczego nie wpisuje. Bez celu – bez przycisku.
+ * „Prowadź do pola" / „Prowadź do bazy" – nawigacja w Google Maps jednym dotknięciem; cel wybiera telefon
+ * ([pl.farmtracker.core.domain.driveTo]), kierowca niczego nie wpisuje. Pod spodem drobniej odległość i pole
+ * w linii prostej („4,2 km · Za lasem"). Jedyny duży przycisk w czasie jazdy.
  */
 @Composable
-internal fun DriveToButton(driveTo: DriveTo?, modifier: Modifier = Modifier) {
-    if (driveTo == null) return
+internal fun DriveToButton(driveTo: DriveTo, distanceMeters: Double?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     BigActionButton(
         text = when (driveTo) {
-            is DriveTo.ToField -> stringResource(R.string.roles_drive_to_field, driveTo.fieldName)
+            is DriveTo.ToField -> stringResource(R.string.roles_drive_to_field)
             is DriveTo.ToBase -> stringResource(R.string.roles_drive_to_base)
         },
+        subtitle = listOfNotNull(distanceMeters?.let { formatDistance(it) }, (driveTo as? DriveTo.ToField)?.fieldName)
+            .joinToString(" · ")
+            .ifEmpty { null },
         icon = Icons.Filled.Navigation,
         onClick = { context.navigateTo(driveTo.point) },
         tone = Tone.Primary,
@@ -63,8 +67,8 @@ private const val GOOGLE_MAPS_PACKAGE = "com.google.android.apps.maps"
 private fun DriveToButtonPreview() {
     FarmTrackerTheme(darkTheme = isSystemInDarkTheme()) {
         Column {
-            DriveToButton(DriveTo.ToField("Za lasem", GeoPoint(50.0, 17.0)))
-            DriveToButton(DriveTo.ToBase(GeoPoint(50.0, 17.0)))
+            DriveToButton(DriveTo.ToField("Za lasem", GeoPoint(50.0, 17.0)), distanceMeters = 4_180.0)
+            DriveToButton(DriveTo.ToBase(GeoPoint(50.0, 17.0)), distanceMeters = null)
         }
     }
 }

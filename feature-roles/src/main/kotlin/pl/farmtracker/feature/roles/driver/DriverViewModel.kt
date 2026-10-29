@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import pl.farmtracker.core.domain.DriveTo
 import pl.farmtracker.core.domain.Role
 import pl.farmtracker.core.domain.driveTo
+import pl.farmtracker.core.domain.geo.distanceMeters
 import pl.farmtracker.core.map.MapChromeController
 import pl.farmtracker.core.map.MapOverlays
 import pl.farmtracker.data.base.BaseRepository
@@ -21,6 +22,7 @@ import pl.farmtracker.feature.roles.common.Coworker
 import pl.farmtracker.feature.roles.common.CrewWatch
 import pl.farmtracker.feature.roles.common.MyPosition
 import pl.farmtracker.feature.roles.common.coworkers
+import pl.farmtracker.feature.roles.common.myPoint
 import pl.farmtracker.feature.roles.common.myPosition
 import pl.farmtracker.feature.roles.common.toWorkMapOverlays
 import javax.inject.Inject
@@ -32,6 +34,8 @@ data class DriverUiState(
     val harvesters: List<Coworker> = emptyList(),
     /** „Prowadź do pola / do bazy" – cel z tego, co wykrył telefon; `null` – nie ma dokąd. */
     val driveTo: DriveTo? = null,
+    /** Ile do celu w linii prostej; `null` – nie wiem, gdzie jestem. */
+    val driveToMeters: Double? = null,
 )
 
 /**
@@ -50,11 +54,14 @@ class DriverViewModel @Inject constructor(
 
     val uiState: StateFlow<DriverUiState> =
         combine(workRepository.isWorking, crewWatch.snapshot, baseRepository.base) { working, crew, base ->
+            val me = myPoint(crew.locations, crew.nowMillis)
+            val driveTo = driveTo(crew.locations, crew.fields, base?.location, crew.nowMillis)
             DriverUiState(
                 isWorking = working,
                 position = myPosition(crew.locations, crew.fields, crew.nowMillis, withTrip = true),
-                harvesters = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.HARVESTER),
-                driveTo = driveTo(crew.locations, crew.fields, base?.location, crew.nowMillis),
+                harvesters = coworkers(crew.locations, crew.fields, crew.nowMillis, Role.HARVESTER, from = me),
+                driveTo = driveTo,
+                driveToMeters = driveTo?.let { target -> me?.distanceMeters(target.point) },
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DriverUiState())
 

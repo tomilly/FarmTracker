@@ -31,11 +31,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Satellite
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -79,7 +77,7 @@ private val OverlaySpacing = 12.dp
 
 /**
  * Wspólny ekran z mapą: górny pasek z „Wróć", mapa na całą resztę ekranu, a na niej: warstwy u góry,
- * „Gdzie jestem" i treść ekranu ([panel]) na dole. Kamera wie, ile mapy zasłaniają przyciski,
+ * celownik „Gdzie jestem" i treść ekranu ([panel]) na dole. Kamera wie, ile mapy zasłaniają przyciski,
  * więc pokazywane pola i działki trafiają w odkrytą część.
  *
  * @param onBack `null` – ekran bez „Wróć" (np. ekran roli w czasie pracy)
@@ -100,22 +98,7 @@ fun MapScaffold(
 ) {
     val context = LocalContext.current
     val chromeState by chrome.state.collectAsStateWithLifecycle()
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { result -> chrome.onLocationPermissionResult(granted = result.values.any { it }) }
-
-    LaunchedEffect(Unit) { chrome.onStart(context.hasLocationPermission()) }
-    LifecycleResumeEffect(Unit) {
-        chrome.onLocationPermissionRechecked(context.hasLocationPermission())
-        onPauseOrDispose { }
-    }
-    LaunchedEffect(chromeState.askForLocation) {
-        if (chromeState.askForLocation) {
-            chrome.onLocationPermissionAsked()
-            permissionLauncher.launch(LocationPermissions)
-        }
-    }
+    LocationPermissionEffects(chrome, chromeState)
 
     // Ile pikseli mapy zasłaniają przyciski u góry i na dole (razem z „Gdzie jestem").
     var coveredTop by remember { mutableIntStateOf(0) }
@@ -135,6 +118,7 @@ fun MapScaffold(
                 onMapTap = onMapTap,
                 onCameraRequestHandled = chrome::onCameraRequestHandled,
                 modifier = Modifier.fillMaxSize(),
+                onFollowingChanged = chrome::onFollowingChanged,
             )
             MapLayerBar(
                 chrome = chromeState,
@@ -156,7 +140,11 @@ fun MapScaffold(
                     .padding(OverlayPadding),
                 verticalArrangement = Arrangement.spacedBy(OverlaySpacing),
             ) {
-                WhereAmIButton(onClick = chrome::onWhereAmIClicked, modifier = Modifier.align(Alignment.End))
+                RecenterButton(
+                    following = chromeState.following,
+                    onClick = chrome::onWhereAmIClicked,
+                    modifier = Modifier.align(Alignment.End),
+                )
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(OverlaySpacing),
@@ -169,9 +157,33 @@ fun MapScaffold(
     }
 }
 
+/**
+ * Zgoda na lokalizację dla mapy: pierwsze otwarcie z pozwoleniem pokazuje mnie, bez – pyta raz; po powrocie
+ * z ustawień systemu sprawdza ją od nowa.
+ */
+@Composable
+internal fun LocationPermissionEffects(chrome: MapChromeController, chromeState: MapChromeState) {
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result -> chrome.onLocationPermissionResult(granted = result.values.any { it }) }
+
+    LaunchedEffect(Unit) { chrome.onStart(context.hasLocationPermission()) }
+    LifecycleResumeEffect(Unit) {
+        chrome.onLocationPermissionRechecked(context.hasLocationPermission())
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(chromeState.askForLocation) {
+        if (chromeState.askForLocation) {
+            chrome.onLocationPermissionAsked()
+            permissionLauncher.launch(LocationPermissions)
+        }
+    }
+}
+
 /** Komunikaty mapy (brak zgody na lokalizację, za daleko na działki) – nad treścią ekranu. */
 @Composable
-private fun ColumnScope.MapHints(chrome: MapChromeState, onOpenSettings: () -> Unit) {
+internal fun ColumnScope.MapHints(chrome: MapChromeState, onOpenSettings: () -> Unit) {
     if (chrome.locationAccess == LocationAccess.DENIED) {
         StatusPill(
             text = stringResource(R.string.core_map_location_denied),
@@ -264,24 +276,11 @@ private fun MapChip(
     }
 }
 
-/** Konwencja z Google Maps: przycisk „moja pozycja" w prawym dolnym rogu mapy – ale z podpisem. */
-@Composable
-private fun WhereAmIButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = FarmTrackerDimens.MinTouchTarget),
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        icon = { Icon(Icons.Filled.MyLocation, contentDescription = null, Modifier.size(28.dp)) },
-        text = { Text(stringResource(R.string.core_map_where_am_i), style = MaterialTheme.typography.labelLarge) },
-    )
-}
-
 private fun Context.hasLocationPermission(): Boolean = LocationPermissions.any {
     ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
 }
 
-private fun Context.openAppSettings() {
+internal fun Context.openAppSettings() {
     startActivity(
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
